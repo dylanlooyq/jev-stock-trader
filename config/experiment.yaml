@@ -1,0 +1,153 @@
+# Single source of truth for the benchmark. See EXPERIMENT_MEMORY.md before changing
+# anything here: most values are research decisions, not engineering knobs.
+
+experiment_id: jevbench-v1
+seed: 20261011
+
+data:
+  source: yfinance
+  universe_name: us_large_cap_100_v1
+  start: "2010-01-01"
+  end: "2026-09-30"          # last date requested, inclusive
+  market_ticker: SPY
+  cache_dir: data
+  # Hand-fixed list of 100 large US stocks chosen in 2026. NOT point-in-time:
+  # survivorship and hindsight selection bias are a documented limitation.
+  tickers: [
+    AAPL, MSFT, AMZN, GOOGL, META, NVDA, TSLA, BRK-B, JPM, JNJ,
+    V, PG, UNH, HD, MA, XOM, CVX, ABBV, PFE, KO,
+    PEP, MRK, LLY, AVGO, COST, WMT, BAC, DIS, CSCO, ADBE,
+    CRM, ACN, TMO, ABT, MCD, NKE, DHR, VZ, CMCSA, NFLX,
+    INTC, TXN, QCOM, WFC, PM, UPS, NEE, MS, BMY, RTX,
+    HON, UNP, ORCL, AMGN, IBM, LOW, GS, CAT, SBUX, BA,
+    AMD, INTU, GE, MDT, AXP, BLK, DE, GILD, CVS, LMT,
+    C, MO, SCHW, T, MDLZ, TGT, BKNG, ADP, CL, SO,
+    DUK, USB, MMM, COP, GD, EMR, F, GM, FDX, SPG,
+    MET, AIG, COF, BK, TMUS, LIN, PYPL, AMT, ISRG, NOW,
+  ]
+
+dataset:
+  # Rows dropped at the start of the sample for every model, so the causal
+  # bucket cut-points used in Jev's state exist for every remaining row.
+  burn_in_days: 63
+
+task:
+  horizons: [1, 5, 20]
+  primary_horizon: 5
+  label:
+    method: vol_adjusted       # vol_adjusted | fixed
+    k: 0.5                     # BUY/SELL if |forward return| > k * sigma * sqrt(h)
+    vol_window: 60             # trailing days for sigma, ending at the prediction date
+    fixed_thresholds: {1: 0.0075, 5: 0.015, 20: 0.03}   # used only when method = fixed
+
+splits:
+  first_test_start: "2014-10-01"
+  test_months: 12
+  validation_months: 12
+  holdout_start: "2024-10-01"  # must fall on a fold boundary; locked by default
+  embargo: horizon             # extra trading days dropped after the purge
+  min_train_days: 250
+
+models:
+  enabled: [
+    majority, stratified_random, logreg, random_forest, gbt,
+    momentum_rule, ma_cross_rule,
+    jev_signal_zero, jev_signal_examples,
+    jev_head_zero, jev_head_examples,
+    jev_plus_controlled_zero, jev_plus_controlled_examples,
+  ]
+  n_jobs: -1
+  # Every tuned model gets the same budget: 8 configurations per fold, chosen
+  # by validation macro-F1, then refit on train + validation.
+  logreg:
+    max_iter: 500
+    grid:
+      - {C: 0.001, class_weight: null}
+      - {C: 0.01, class_weight: null}
+      - {C: 1.0, class_weight: null}
+      - {C: 100.0, class_weight: null}
+      - {C: 0.001, class_weight: balanced}
+      - {C: 0.01, class_weight: balanced}
+      - {C: 1.0, class_weight: balanced}
+      - {C: 100.0, class_weight: balanced}
+  random_forest:
+    n_estimators: 200
+    max_samples: 0.2
+    grid:
+      - {max_depth: 4, min_samples_leaf: 200, class_weight: null}
+      - {max_depth: 8, min_samples_leaf: 200, class_weight: null}
+      - {max_depth: 12, min_samples_leaf: 50, class_weight: null}
+      - {max_depth: 16, min_samples_leaf: 50, class_weight: null}
+      - {max_depth: 4, min_samples_leaf: 200, class_weight: balanced_subsample}
+      - {max_depth: 8, min_samples_leaf: 200, class_weight: balanced_subsample}
+      - {max_depth: 12, min_samples_leaf: 50, class_weight: balanced_subsample}
+      - {max_depth: 16, min_samples_leaf: 50, class_weight: balanced_subsample}
+  gbt:
+    library: lightgbm
+    min_child_samples: 200
+    subsample: 0.7
+    colsample_bytree: 0.7
+    grid:
+      - {num_leaves: 7, learning_rate: 0.03, n_estimators: 200, class_weight: null}
+      - {num_leaves: 15, learning_rate: 0.03, n_estimators: 400, class_weight: null}
+      - {num_leaves: 31, learning_rate: 0.05, n_estimators: 200, class_weight: null}
+      - {num_leaves: 15, learning_rate: 0.1, n_estimators: 100, class_weight: null}
+      - {num_leaves: 7, learning_rate: 0.03, n_estimators: 200, class_weight: balanced}
+      - {num_leaves: 15, learning_rate: 0.03, n_estimators: 400, class_weight: balanced}
+      - {num_leaves: 31, learning_rate: 0.05, n_estimators: 200, class_weight: balanced}
+      - {num_leaves: 15, learning_rate: 0.1, n_estimators: 100, class_weight: balanced}
+  momentum_rule:
+    grid:
+      - {lookback: 20, band: 0.0}
+      - {lookback: 60, band: 0.0}
+      - {lookback: 120, band: 0.0}
+      - {lookback: 250, band: 0.0}
+      - {lookback: 20, band: 0.5}
+      - {lookback: 60, band: 0.5}
+      - {lookback: 120, band: 0.5}
+      - {lookback: 250, band: 0.5}
+  ma_cross_rule:
+    grid:
+      - {fast: 20, slow: 50, confirm: false}
+      - {fast: 50, slow: 200, confirm: false}
+      - {fast: 20, slow: 200, confirm: false}
+      - {fast: 20, slow: 50, confirm: true}
+      - {fast: 50, slow: 200, confirm: true}
+      - {fast: 20, slow: 200, confirm: true}
+
+jev:
+  model: jev-1.13.0            # pinned id; never an alias
+  endpoint: https://api.typesafe.ai/v1/systemone
+  wording_version: v1          # bump on ANY change to state layout or question text
+  price_usd_per_mtok: 0.042
+  rate_limit_tokens_per_s: 100000
+  rate_limit_requests_per_s: 80
+  max_workers: 16
+  max_retries: 6
+  timeout_s: 30
+  bucket_lookback_days: 750
+  bucket_quantiles: [0.1, 0.3, 0.7, 0.9]
+  examples_per_class: 4        # stratified on the primary-horizon label
+  example_lookback_days: 250
+  cache_path: data/jev_cache.sqlite
+
+backtest:
+  mode: long_only              # long_only (SELL = no position) | long_short
+  max_weight: 0.10             # cap per name within one daily tranche
+  cost_bps_per_side: 5.0       # commission + half-spread + slippage, all-in
+  borrow_bps_per_year: 50.0    # long_short only
+  starting_capital: 100000
+
+stats:
+  n_boot: 2000
+  min_block_days: 10           # mean block length = max(this, 2 * horizon)
+  alpha: 0.05
+  practical_margin_macro_f1: 0.02
+
+# Predefined sensitivity runs. Each is a separate, logged run of the benchmark.
+sensitivity:
+  - {name: label_k_0.25, overrides: {task: {label: {k: 0.25}}}}
+  - {name: label_k_0.75, overrides: {task: {label: {k: 0.75}}}}
+  - {name: label_fixed, overrides: {task: {label: {method: fixed}}}}
+  - {name: vol_window_20, overrides: {task: {label: {vol_window: 20}}}}
+  - {name: vol_window_120, overrides: {task: {label: {vol_window: 120}}}}

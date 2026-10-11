@@ -1,0 +1,19 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# Local data and caches (large, and vendor data should not be redistributed)
+data/
+cache/
+
+# Per-observation outputs are large; metrics, manifests and reports are kept
+results/**/*.parquet

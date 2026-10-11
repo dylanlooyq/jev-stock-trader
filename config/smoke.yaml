@@ -1,0 +1,18 @@
+# Overrides for a fast end-to-end validation run. Not an experiment: results from
+# this configuration must never be reported as findings.
+
+experiment_id: smoke
+
+data:
+  universe_name: smoke_12
+  tickers: [AAPL, MSFT, JPM, XOM, JNJ, WMT, KO, CAT, INTC, DIS, PFE, HD]
+
+splits:
+  first_test_start: "2021-10-01"
+
+models:
+  random_forest:
+    n_estimators: 50
+
+stats:
+  n_boot: 300
