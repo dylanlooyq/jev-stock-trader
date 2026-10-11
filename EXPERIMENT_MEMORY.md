@@ -167,7 +167,7 @@ is not practical here.
 - The verdict rests on **all twelve folds pooled, 2014-10 to 2026-09** (segment `all`).
   Results for the first ten folds and the last two are also reported separately as a
   robustness check.
-- **Design frozen at commit `FREEZE_COMMIT`** (2026-10-11). Basis for treating every
+- **Design frozen at commit `7223fb6`** (2026-10-11). Basis for treating every
   fold as out-of-sample: when the design was fixed, the only results seen were two
   12-stock smoke runs over three folds, on a universe that is no longer used; no model is
   tuned on test folds; no question wording had been sent to any API; nothing had been run
@@ -315,8 +315,8 @@ BUY-names as the main trading test.
 | 2026-10-11 | `79b2e86` | D5 to D8 implemented; provider registry added; 75 tests. Smoke run `smoke_v2_2026-10-11` (same 12 stocks and folds) | Runs end to end. Interval on a Sharpe difference about ±0.76 at 5 days, so this run could not detect a difference below about 1.1 | **Not a finding.** With 12 stocks the ranking portfolio holds 2 names |
 | 2026-10-11 | `79b2e86` | Owner requests, round 3: backtest page as a local HTML file; openjev.com inspected; room reserved for an OpenAI classifier | `visualise` command; sections 3 and 5 | Done. openjev.com is not Jev and was not downloaded or run |
 | 2026-10-11 | `79b2e86` | Owner decision D9: universe = all 503 S&P 500 tickers listed on 2026-10-11. Prices downloaded and frozen as dataset `725401c78cad` | 502 stocks obtained (`VYLR` has no bars before 2026-10); 1,984,450 rows; nothing dropped in cleaning. Stale pre-listing bars found in three tickers (section 8, item 18) | Superseded by D10 the same day. Data frozen; **no model was run on it** |
-| 2026-10-11 | `FREEZE_COMMIT` | Owner decision D10: universe = ten assets (`multi_asset_10_v1`), because the S&P 500 Jev bill was too high. Calendar rule and wording `v2` added. Prices frozen as dataset `4df028245fc7` | All 11 tickers obtained; 45,137 rows; 1,370 off-calendar bitcoin rows dropped; no gaps, no zero-volume rows. 32,839 modelling rows through 2024-09 | Decided |
-| 2026-10-11 | `FREEZE_COMMIT` | Owner decision D11: ranking rule holds the top 3 of 10 assets; top 1 reported as a declared check. Both sessions' work combined; outputs reworded from "stocks" to "assets"; 77 tests | Sections 4 and 6 | Decided; new freeze recorded |
+| 2026-10-11 | `7223fb6` | Owner decision D10: universe = ten assets (`multi_asset_10_v1`), because the S&P 500 Jev bill was too high. Calendar rule and wording `v2` added. Prices frozen as dataset `4df028245fc7` | All 11 tickers obtained; 45,137 rows; 1,370 off-calendar bitcoin rows dropped; no gaps, no zero-volume rows. 32,839 modelling rows through 2024-09 | Decided |
+| 2026-10-11 | `7223fb6` | Owner decision D11: ranking rule holds the top 3 of 10 assets; top 1 reported as a declared check. Both sessions' work combined; outputs reworded from "stocks" to "assets"; 77 tests | Sections 4 and 6 | Decided; new freeze recorded |
 
 BASELINE_STATUS
 
