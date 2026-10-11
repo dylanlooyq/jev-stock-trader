@@ -11,6 +11,16 @@ Last updated: 2026-10-11. Pipeline implemented and validated on two smoke runs. 
 call has been made, no full-universe run has been made, and no experimental result
 exists.**
 
+> **Discrepancy flagged 2026-10-11, unresolved.** This file describes a 100-stock universe.
+> `config/experiment.yaml` at commit `79b2e86` lists 503 S&P 500 constituents
+> (`sp500_2026-10-11`); `config/large_cap_100.yaml` restores the 100-stock list. The change
+> was made by a second session working in this repository at the same time, on the owner's
+> request there to "extend the trading universe to all stocks in S&P500" (referred to in
+> the config as decision D9). D9 has not been written into this file yet. Until it is:
+> treat the universe as **changing to the S&P 500**, treat the runtime and Jev cost
+> estimates in section 9 as roughly five times too low, and record a new freeze commit in
+> section 4 once D9 is written up.
+
 ---
 
 ## 1. Research Objective
