@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from .backtest import names_held
+from .backtest import names_held, rank_weights, trade_rules, tranche_weights
 from .providers import PROVIDERS, describe_arm
 from .report import detectable_effect
 
@@ -25,6 +25,32 @@ LABELS = {
 KINDS = {"classifier": "Model", "rule": "Rule", "baseline": "Baseline"}
 PASSIVE = ("always_buy", "market_buy_and_hold")
 MAX_POINTS = 900   # per line; longer series are thinned for drawing only
+ASSET_NAMES = {
+    "IVV": "S&P 500", "GLD": "Gold", "BTC-USD": "Bitcoin", "TLT": "Long Treasuries", "EFA": "Developed stocks",
+    "EEM": "Emerging stocks", "USO": "Crude oil", "VNQ": "Real estate", "UUP": "US dollar", "HYG": "High-yield bonds",
+}
+
+
+def _holdings(preds: pd.DataFrame, cfg: dict, rule: str, tickers: list[str]) -> dict:
+    """Average share of each strategy's newly opened positions held in each asset, in percent.
+
+    Recomputed from the saved predictions with the same weighting functions the backtest uses.
+    """
+    spec, bt = trade_rules(cfg)[rule], cfg["backtest"]
+    out = {}
+    for model, sub in preds.groupby("model"):
+        if spec["rule"] == "rank":
+            wide = sub.pivot(index="date", columns="ticker", values="score").reindex(columns=tickers)
+            weights = rank_weights(wide, spec["rank_fraction"], int(cfg["seed"]), "long_only")
+        else:
+            wide = sub.pivot(index="date", columns="ticker", values="pred").reindex(columns=tickers)
+            weights = tranche_weights(wide, "long_only", float(bt["max_weight"]))
+        out[model] = np.round(weights.mean(axis=0).to_numpy() * 100, 1).tolist()
+    available = preds[preds["model"] == preds["model"].iloc[0]].pivot(
+        index="date", columns="ticker", values="pred").reindex(columns=tickers).notna()
+    equal = available.div(available.sum(axis=1), axis=0)
+    out["always_buy"] = np.round(equal.mean(axis=0).to_numpy() * 100, 1).tolist()
+    return out
 
 
 def _strategy(model: str, families: dict, rule: str) -> dict:
@@ -51,6 +77,10 @@ def build_payload(run_dir: Path) -> dict:
     daily = pd.read_parquet(run_dir / "daily_returns.parquet")
     families = metrics.get("families", {})
     folds = pd.read_csv(run_dir / "folds.csv")
+    tickers = list(cfg["data"]["tickers"])
+    preds_path = run_dir / "predictions.parquet"   # kept locally, not in the repository
+    preds = pd.read_parquet(preds_path, columns=["model", "horizon", "segment", "date", "ticker", "pred", "score"]) \
+        if preds_path.exists() else None
 
     order = [m for m in LABELS if m not in PASSIVE]
     views, segments = {}, sorted(metrics["segments"], key=lambda s: {"all": 0, "dev": 1, "holdout": 2}.get(s, 3))
@@ -60,6 +90,9 @@ def build_payload(run_dir: Path) -> dict:
         for h in horizons:
             block = metrics["segments"][segment][str(h)]
             sub = daily[(daily["segment"] == segment) & (daily["horizon"] == h)]
+            view_preds = None
+            if preds is not None:
+                view_preds = preds[(preds["horizon"] == h) & ((preds["segment"] == segment) | (segment == "all"))]
             for rule in rules:
                 stats = block["trading"][rule]
                 models = sorted(stats, key=lambda m: (m in PASSIVE, order.index(m) if m in order else len(order), m))
@@ -85,6 +118,7 @@ def build_payload(run_dir: Path) -> dict:
                     "diffs": [{"id": c["a"], "diff": c["diff"], "lo": c["ci_low"], "hi": c["ci_high"],
                                "p": c.get("p_holm", c["p_value"])} for c in comparisons if "diff" in c],
                     "power": power,
+                    "holdings": _holdings(view_preds, cfg, rule, tickers) if view_preds is not None else None,
                 }
 
     bt, n_assets = cfg["backtest"], len(cfg["data"]["tickers"])
@@ -102,6 +136,7 @@ def build_payload(run_dir: Path) -> dict:
             "external_ran": sorted({families[m] for m in manifest["models_run"] if families.get(m) in PROVIDERS}),
         },
         "segments": segments, "rules": rules, "rule_labels": rule_labels, "horizons": horizons,
+        "tickers": [{"id": t, "name": ASSET_NAMES.get(t, t)} for t in tickers],
         "defaults": {"segment": segments[0], "rule": bt["primary_rule"], "horizon": cfg["task"]["primary_horizon"]},
         "views": views,
     }

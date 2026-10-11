@@ -82,6 +82,10 @@
   th.left, td.left { text-align: left; }
   .name { display: inline-flex; align-items: center; gap: 8px; }
   tr.bench td { font-weight: 600; }
+  #holdings th, #holdings td { text-align: center; }
+  #holdings th.left, #holdings td.left { text-align: left; }
+  .assets { display: flex; flex-wrap: wrap; gap: 2px 16px; font-size: .8rem; color: var(--text-2); }
+  .assets b { font-weight: 600; color: var(--text); }
   .foot { color: var(--muted); font-size: .8rem; max-width: 78ch; }
 </style>
 </head>
@@ -114,6 +118,13 @@
     <h2>Sharpe ratio against equal-weight buy and hold</h2>
     <p class="note">Each strategy's net Sharpe ratio minus buy and hold, with a 95% bootstrap interval. Right of zero is better. An interval that crosses zero means the difference could be chance.</p>
     <div class="chart" id="forest" style="min-height: 240px"></div>
+  </section>
+
+  <section class="card" id="holdings-card">
+    <h2>What each strategy held</h2>
+    <p class="note">Average share of each strategy's new positions placed in each asset, in percent. A darker cell means a larger share. Equal-weight buy and hold spreads evenly across whatever is available.</p>
+    <div class="assets" id="assets"></div>
+    <div class="table-wrap"><table id="holdings"></table></div>
   </section>
 
   <section class="card">
@@ -370,6 +381,39 @@
     $('table').replaceChildren(thead, tbody);
   }
 
+  function drawHoldings() {
+    const v = view();
+    $('holdings-card').hidden = !v.holdings;
+    if (!v.holdings) return;
+    $('assets').replaceChildren(...DATA.tickers.map((t) => {
+      const item = el('span');
+      item.append(el('b', null, t.id), ' ' + t.name);
+      return item;
+    }));
+    const rows = v.strategies.filter((s) => v.holdings[s.id] && (s.chart || s.id === 'always_buy'));
+    const peak = Math.max(1, ...rows.flatMap((s) => v.holdings[s.id]));
+    const head = el('tr');
+    head.appendChild(el('th', 'left', 'Strategy'));
+    DATA.tickers.forEach((t) => { const th = el('th', null, t.id); th.title = t.name; head.appendChild(th); });
+    const thead = el('thead'); thead.appendChild(head);
+    const tbody = el('tbody');
+    rows.forEach((s) => {
+      const tr = el('tr', s.kind === 'Benchmark' ? 'bench' : null);
+      const nameCell = el('td', 'left'), name = el('span', 'name');
+      name.append(swatch(styleOf(s)), el('span', null, s.label));
+      nameCell.appendChild(name);
+      tr.appendChild(nameCell);
+      v.holdings[s.id].forEach((w) => {
+        const td = el('td', null, fixed(w, 0));
+        // One hue, light to dark, for magnitude; the number is always shown as well.
+        td.style.background = `color-mix(in srgb, var(--s1) ${Math.round((w / peak) * 55)}%, transparent)`;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    $('holdings').replaceChildren(thead, tbody);
+  }
+
   function drawControls() {
     const groups = [
       ['Period', 'segment', DATA.segments.map((s) => [s, SEGMENTS[s] || s])],
@@ -451,6 +495,7 @@
       base: 0, label: 'Drawdown by strategy', fmt: (t) => fixed(t, 0) + '%', tip: (t) => fixed(t, 1) + '%',
     });
     drawForest($('forest'));
+    drawHoldings();
     drawTable();
   }
 

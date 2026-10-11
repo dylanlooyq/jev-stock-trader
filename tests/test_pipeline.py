@@ -93,6 +93,12 @@ def test_local_backtest_page_is_self_contained(cfg, prices, tmp_path):
     assert view["growth"]["gbt"][-1] - 1 == pytest.approx(stored, abs=1e-4)
     assert len(view["diffs"]) == 5 and view["power"]["mde_80"] > view["power"]["half_width"] > 0
 
+    # Holdings are shares of the portfolio: a fully invested ranking rule sums to 100%.
+    held = view["holdings"]
+    assert len(held["gbt"]) == len(payload["tickers"]) == 6
+    assert sum(held["gbt"]) == pytest.approx(100, abs=1.0) and sum(held["always_buy"]) == pytest.approx(100, abs=1.0)
+    assert max(payload["views"]["dev|rank_check|5"]["holdings"]["gbt"]) <= 100
+
     page = write_page(out["out_dir"]).read_text(encoding="utf-8")
     assert "/*__DATA__*/null" not in page and '"name":"page"' in page
     assert "http://" not in page.replace("http://www.w3.org/2000/svg", "") and "https://" not in page   # opens offline
