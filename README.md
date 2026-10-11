@@ -11,9 +11,13 @@ evidence".
 
 ## Status
 
-The benchmark pipeline is implemented and tested. Baselines run; the Jev arms are built but
-have not been run, because no API key is available yet. There are no experimental results.
-Slots are reserved for an OpenAI classifier and a local open model.
+The baseline run is done: traditional classifiers and trading rules on all twelve folds.
+None is reliably different from equal-weight buy and hold. The Jev arms are built but have
+not been run, because no API key is available yet, so there is no result on Jev. Slots are
+reserved for an OpenAI classifier and a local open model.
+
+- Report: [EXPERIMENT_REPORT.md](EXPERIMENT_REPORT.md)
+- Charts: `results/baseline_multi_asset_v1/backtests.html` (open in a browser; works offline)
 
 ## Read this first
 

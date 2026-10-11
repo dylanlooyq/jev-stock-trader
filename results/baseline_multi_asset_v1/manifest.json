@@ -1,0 +1,84 @@
+{
+  "run_name": "baseline_multi_asset_v1",
+  "experiment_id": "jevbench-v1",
+  "started_at_utc": "2026-10-11T11:36:24+00:00",
+  "finished_at_utc": "2026-10-11T11:48:08+00:00",
+  "runtime_seconds": 703.7,
+  "git_commit": "3988057",
+  "config_hash": "0f51059d80ca",
+  "holdout_unlocked": true,
+  "dataset": {
+    "source": "yfinance",
+    "yfinance_version": "0.2.58",
+    "downloaded_at_utc": "2026-10-11T10:53:06+00:00",
+    "universe_name": "multi_asset_10_v1",
+    "requested_start": "2010-01-01",
+    "requested_end": "2026-09-30",
+    "tickers_requested": 11,
+    "tickers_obtained": 11,
+    "tickers_failed": [],
+    "rows": 45137,
+    "rows_dropped": {
+      "missing_price": 0,
+      "non_positive_price": 0,
+      "duplicate_date_ticker": 0,
+      "off_market_calendar": 1370
+    },
+    "first_date": "2010-01-04",
+    "last_date": "2026-09-30",
+    "late_starters": {
+      "BTC-USD": "2014-09-17"
+    },
+    "sha256": "4df028245fc7e20d887d640d1a675a4040cf32f79f2e4b60c717ca90c285dc16"
+  },
+  "versions": {
+    "python": "3.11.5",
+    "pandas": "2.2.3",
+    "numpy": "1.26.4",
+    "scikit-learn": "1.5.2",
+    "lightgbm": "4.6.0"
+  },
+  "label": {
+    "method": "vol_adjusted",
+    "k": 0.5,
+    "vol_window": 60,
+    "fixed_thresholds": {
+      "1": 0.0075,
+      "5": 0.015,
+      "20": 0.03
+    }
+  },
+  "horizons": [
+    1,
+    5,
+    20
+  ],
+  "n_dataset_rows": 37849,
+  "external_status": {
+    "jev/zero": "not run: no saved outputs",
+    "jev/examples": "not run: no saved outputs",
+    "openai/zero": "not run: no saved outputs",
+    "openai/examples": "not run: no saved outputs",
+    "local/zero": "not run: no saved outputs",
+    "local/examples": "not run: no saved outputs"
+  },
+  "risk_free": "tbill",
+  "primary_rule": "rank",
+  "models_run": [
+    "gbt",
+    "logreg",
+    "ma_cross_rule",
+    "majority",
+    "momentum_rule",
+    "random_forest",
+    "stratified_random"
+  ],
+  "models_not_run": {
+    "jev_head_examples": "not run: no saved outputs",
+    "jev_head_zero": "not run: no saved outputs",
+    "jev_plus_controlled_examples": "not run: no saved outputs",
+    "jev_plus_controlled_zero": "not run: no saved outputs",
+    "jev_signal_examples": "not run: no saved outputs",
+    "jev_signal_zero": "not run: no saved outputs"
+  }
+}

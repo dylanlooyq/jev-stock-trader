@@ -7,8 +7,9 @@ prior decision or result (see section 11).
 Status markers: **DECIDED** (approved by the project owner), **PROVISIONAL** (proposed
 default, implemented, not explicitly approved), **OPEN** (needs a decision or evidence).
 
-Last updated: 2026-10-11. Pipeline implemented and validated on two smoke runs. **No Jev
-call has been made.** See section 7 for whether the baseline run has been made.
+Last updated: 2026-10-11. The baseline run (traditional models and rules, all twelve
+folds, ten assets) has been made; its results are in section 7. **No Jev call has been
+made, so there is no result yet on the thesis.**
 
 Two sessions worked on this repository in parallel on 2026-10-11; their work was combined
 into one design at the freeze commit named in section 4.
@@ -318,7 +319,47 @@ BUY-names as the main trading test.
 | 2026-10-11 | `7223fb6` | Owner decision D10: universe = ten assets (`multi_asset_10_v1`), because the S&P 500 Jev bill was too high. Calendar rule and wording `v2` added. Prices frozen as dataset `4df028245fc7` | All 11 tickers obtained; 45,137 rows; 1,370 off-calendar bitcoin rows dropped; no gaps, no zero-volume rows. 32,839 modelling rows through 2024-09 | Decided |
 | 2026-10-11 | `7223fb6` | Owner decision D11: ranking rule holds the top 3 of 10 assets; top 1 reported as a declared check. Both sessions' work combined; outputs reworded from "stocks" to "assets"; 77 tests | Sections 4 and 6 | Decided; new freeze recorded |
 
-BASELINE_STATUS
+| 2026-10-11 | `3988057` | **Baseline run `baseline_multi_asset_v1`**: verdict window (twelve folds, 2014-10-01 to 2026-09-22), ten assets, dataset `4df028245fc7`, traditional models and rules only. Benchmark code identical to the freeze commit `7223fb6`; the later commit changed the dashboard only. 704 s | See "Baseline results" below | **Real out-of-sample baseline results. Not a result on Jev** |
+
+### Baseline results (run `baseline_multi_asset_v1`, 2026-10-11)
+
+Primary test: 5-day horizon, top 3 of 10, all folds, net Sharpe ratio in excess of the
+T-bill rate. Full tables: `results/baseline_multi_asset_v1/report.md` and
+`EXPERIMENT_REPORT.md`; charts: `results/baseline_multi_asset_v1/backtests.html`.
+
+| Strategy | Sharpe | Difference from equal-weight buy and hold (95% interval) |
+|---|---:|---|
+| Moving-average rule | 1.40 | +0.46 (−0.01 to +0.90) |
+| Momentum rule | 1.26 | +0.32 (−0.21 to +0.81) |
+| Equal-weight buy and hold | 0.94 | — |
+| Random forest (reference classifier) | 0.86 | −0.08 (−0.52 to +0.36) |
+| Logistic regression | 0.85 | −0.09 (−0.55 to +0.40) |
+| SPY buy and hold (context) | 0.74 | — |
+| Gradient-boosted trees | 0.60 | −0.34 (−0.77 to +0.09) |
+| Random selection (no skill) | 0.41 | — |
+
+- **No strategy is reliably different from buy and hold** on the primary test: every
+  interval includes zero and the smallest Holm-adjusted p is 0.24.
+- **Detectable effect:** the interval on a Sharpe difference is typically ±0.45, so a true
+  difference below about 0.65 would usually be missed. The margin for "better" is 0.2.
+  For Jev to be called better it must beat both the random forest (0.86) and buy and hold
+  (0.94) with an interval that excludes zero, which in practice needs a Sharpe ratio
+  around 1.5 or more.
+- **Top-1 check:** same picture. Moving-average rule +0.40 (−0.18 to +0.96); nothing
+  reliable.
+- **Other horizons:** at 1 day the three classifiers are reliably *worse* than buy and
+  hold on the primary rule (−0.62 to −0.82, Holm p ≤ 0.04), because daily turnover costs
+  eat them. At 20 days nothing is reliable.
+- **Classification versus trading:** the classifiers beat random guessing on macro-F1 by
+  about 0.03 at 1 and 5 days (Holm p = 0.002) yet do not beat buy and hold when traded.
+  This is pitfall 4 in practice.
+- **By period:** the moving-average rule leads in both parts (Sharpe 1.24 against 0.82 for
+  buy and hold before 2024-10; 1.76 against 1.20 after).
+- **Not tested:** how much of the trend rules' lead comes from bitcoin. The moving-average
+  rule placed 18% of its positions in bitcoin against 9% for buy and hold. Any breakdown
+  by asset would be exploratory.
+
+No Jev run has been made.
 
 ## 8. Known Failure Modes and Pitfalls
 
@@ -376,6 +417,10 @@ BASELINE_STATUS
 23. **Hindsight in the asset list.** Bitcoin was chosen knowing its history; equal-weight
     buy and hold of the ten is flattered by it from 2015-09. The comparison between models
     and that benchmark uses the same assets, so this inflates levels more than differences.
+24. **Trend rules and bitcoin.** The two trend rules have the highest baseline Sharpe
+    ratios and hold about twice the bitcoin that buy and hold does. Bitcoin was chosen
+    with hindsight and is filled with no delay (item 22). Their lead is not reliable
+    statistically and should not be read as a robust edge.
 
 ## 9. Architecture and Reproducibility
 
@@ -449,7 +494,7 @@ verdict window.
 Next steps, in order:
 1. ~~Download the full dataset; review the manifest for failed tickers.~~ Done 2026-10-11
    (ten assets, none failed).
-2. Baseline benchmark on the verdict window: see section 7.
+2. ~~Baseline benchmark on the verdict window.~~ Done 2026-10-11 (section 7).
 3. With a key: `jev-annotate --pilot` (suggested budget $1) to verify the client against
    the live API, measure real token usage and check outputs are not degenerate.
 4. Build and run the anonymisation check (pitfall 1).

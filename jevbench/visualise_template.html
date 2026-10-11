@@ -56,6 +56,7 @@
   .card { gap: 10px; }
   .note { max-width: 78ch; }
 
+  .scale { color: var(--muted); font-weight: 400; font-size: .82rem; }
   .legend { display: flex; flex-wrap: wrap; gap: 4px 6px; }
   .key { font: inherit; font-size: .8rem; color: var(--text-2); background: none; border: 1px solid transparent; border-radius: 6px;
     padding: 3px 7px; display: inline-flex; align-items: center; gap: 7px; cursor: pointer; white-space: nowrap; }
@@ -102,7 +103,7 @@
   <section class="tiles" id="tiles"></section>
 
   <section class="card">
-    <h2>Growth of $1, net of costs</h2>
+    <h2>Growth of $1, net of costs<span class="scale" id="growth-scale"></span></h2>
     <p class="note" id="growth-note"></p>
     <div class="legend" id="legend"></div>
     <div class="chart" id="growth"></div>
@@ -200,6 +201,17 @@
     return ticks;
   }
 
+  // Ticks at 1, 2 and 5 times each power of ten, covering the whole range.
+  function logTicks(lo, hi) {
+    const all = [];
+    for (let e = Math.floor(Math.log10(lo)) - 1; e <= Math.ceil(Math.log10(hi)) + 1; e++) {
+      [1, 2, 5].forEach((k) => all.push(Number((k * Math.pow(10, e)).toPrecision(1))));
+    }
+    const first = all.filter((t) => t <= lo * 1.0000001).pop();
+    const last = all.find((t) => t >= hi / 1.0000001);
+    return all.filter((t) => t >= first && t <= last);
+  }
+
   function measure(svg, cls, texts) {
     const probe = svgEl('text', { class: cls }, svg);
     let widest = 0;
@@ -241,11 +253,15 @@
     const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': opt.label }, box);
     const times = v.dates.map(time);
     const all = shown.flatMap((s) => s.values);
-    const ticks = niceTicks(Math.min(opt.base, ...all), Math.max(opt.base, ...all), 5);
+    const least = Math.min(opt.base, ...all), most = Math.max(opt.base, ...all);
+    const useLog = Boolean(opt.log) && least > 0 && most / least > 5;
+    const ticks = useLog ? logTicks(least, most) : niceTicks(least, most, 5);
     const lo = ticks[0], hi = ticks[ticks.length - 1];
+    const scale = useLog ? Math.log : (val) => val;
     const m = { l: measure(svg, 'tick', ticks.map(opt.fmt)) + 10, r: 14, t: 10, b: 28 };
     const x = (t) => m.l + ((t - times[0]) / (times[times.length - 1] - times[0] || 1)) * (W - m.l - m.r);
-    const y = (val) => H - m.b - ((val - lo) / (hi - lo || 1)) * (H - m.t - m.b);
+    const y = (val) => H - m.b - ((scale(val) - scale(lo)) / (scale(hi) - scale(lo) || 1)) * (H - m.t - m.b);
+    if (opt.onScale) opt.onScale(useLog);
 
     ticks.forEach((t) => {
       svgEl('line', { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), 'stroke-width': 1,
@@ -455,10 +471,12 @@
     caution.replaceChildren();
     if (run.smoke) caution.appendChild(el('span', 'flag', 'Pipeline check, not a finding. '));
     else if (!run.full_window) caution.appendChild(el('span', 'flag', 'Partial window, not the verdict run. '));
+    else if (!run.external_ran.length) caution.appendChild(el('span', 'flag', 'Baselines only: no verdict on Jev yet. '));
     caution.append(`${run.assets} assets, ${run.folds} walk-forward folds, ${v.first_date} to ${v.last_date}. Trading cost ${run.cost_bps} basis points per trade. `);
     caution.append(run.external_ran.length
       ? `External classifiers included: ${run.external_ran.join(', ')}.`
       : 'Jev has not been run, so no Jev strategy appears here.');
+    if (run.hindsight) caution.append(' ' + run.hindsight);
     if (v.thinned > 1) caution.append(` Lines show every ${v.thinned}th trading day; all statistics use every day.`);
 
     $('growth-note').textContent = state.rule !== 'buy_names'
@@ -489,7 +507,9 @@
     drawText();
     drawLegend();
     drawLines($('growth'), 'growth', {
-      base: 1, label: 'Growth of one dollar by strategy', fmt: (t) => '$' + fixed(t, 2), tip: (t) => '$' + fixed(t, 3),
+      base: 1, label: 'Growth of one dollar by strategy', log: true,
+      fmt: (t) => '$' + (t >= 10 ? fixed(t, 0) : fixed(t, 2)), tip: (t) => '$' + fixed(t, t >= 10 ? 2 : 3),
+      onScale: (isLog) => { $('growth-scale').textContent = isLog ? ' (log scale: each gridline step is roughly a doubling)' : ''; },
     });
     drawLines($('drawdown'), 'drawdown', {
       base: 0, label: 'Drawdown by strategy', fmt: (t) => fixed(t, 0) + '%', tip: (t) => fixed(t, 1) + '%',

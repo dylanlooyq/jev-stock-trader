@@ -132,6 +132,7 @@ def build_payload(run_dir: Path) -> dict:
             "folds": int(folds["fold_id"].nunique()), "cost_bps": bt["cost_bps_per_side"],
             "held": {r: names_held(cfg, r) for r in rules}, "risk_free": manifest.get("risk_free", "zero"),
             "market": cfg["data"]["market_ticker"],
+            "hindsight": "The asset list was chosen with hindsight, which flatters every line here, buy and hold included.",
             "external": metrics.get("external_status", {}),
             "external_ran": sorted({families[m] for m in manifest["models_run"] if families.get(m) in PROVIDERS}),
         },
