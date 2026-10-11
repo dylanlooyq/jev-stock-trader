@@ -132,7 +132,7 @@ is not practical here.
 - The verdict rests on **all twelve folds pooled, 2014-10 to 2026-09** (segment `all`).
   Results for the first ten folds and the last two are also reported separately as a
   robustness check.
-- **Design frozen at commit `FREEZE_COMMIT`** (2026-10-11). Basis for treating every fold
+- **Design frozen at commit `79b2e86`** (2026-10-11). Basis for treating every fold
   as out-of-sample: when the design was fixed, the only results seen were two 12-stock
   smoke runs over three folds; no model is tuned on test folds; Jev wording `v1` had
   never been sent to the API.
@@ -256,8 +256,8 @@ BUY-names as the main trading test.
 | 2026-10-11 | none | Owner decisions, round 1: Jev = TypeSafe `jev-1.13.0` (no key yet); US large caps via yfinance; all Jev permutations; no text study | Sections 3 and 5 | Decided |
 | 2026-10-11 | `8e9de43` | Pipeline implemented; 64 tests. Smoke run `smoke_2026-10-11` (12 stocks, 3 folds, baselines, dataset `72519f1d13e4`) | Runs end to end; labels matched an independent recomputation on 300 rows | **Not a finding.** Old engine: BUY-names only, zero risk-free rate. Its Sharpe ratios are not comparable with later runs |
 | 2026-10-11 | `8e9de43` | Owner decisions, round 2 (D5 to D8): trading primary, ranking portfolio, equal-weight buy-and-hold benchmark, verdict on all twelve folds with the design frozen now | Sections 1, 4, 6 | Decided |
-| 2026-10-11 | `FREEZE_COMMIT` | D5 to D8 implemented; provider registry added; 75 tests. Smoke run `smoke_v2_2026-10-11` (same 12 stocks and folds) | Runs end to end. Interval on a Sharpe difference about ±0.76 at 5 days, so this run could not detect a difference below about 1.1 | **Not a finding.** With 12 stocks the ranking portfolio holds 2 names |
-| 2026-10-11 | `FREEZE_COMMIT` | Owner requests, round 3: backtest page as a local HTML file; openjev.com inspected; room reserved for an OpenAI classifier | `visualise` command; sections 3 and 5 | Done. openjev.com is not Jev and was not downloaded or run |
+| 2026-10-11 | `79b2e86` | D5 to D8 implemented; provider registry added; 75 tests. Smoke run `smoke_v2_2026-10-11` (same 12 stocks and folds) | Runs end to end. Interval on a Sharpe difference about ±0.76 at 5 days, so this run could not detect a difference below about 1.1 | **Not a finding.** With 12 stocks the ranking portfolio holds 2 names |
+| 2026-10-11 | `79b2e86` | Owner requests, round 3: backtest page as a local HTML file; openjev.com inspected; room reserved for an OpenAI classifier | `visualise` command; sections 3 and 5 | Done. openjev.com is not Jev and was not downloaded or run |
 
 No full-universe run, no Jev run and no verdict-window run has been made.
 
