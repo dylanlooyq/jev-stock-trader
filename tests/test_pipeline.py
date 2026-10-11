@@ -24,8 +24,8 @@ def test_locked_run_writes_everything_and_draws_no_conclusion_about_jev(cfg, pri
     assert block["comparisons"]["providers"] == {}
     assert len(block["comparisons"]["skill_vs_stratified_random"]) == 5
 
-    assert set(block["trading"]) == {"rank", "buy_names"}
-    for rule in ("rank", "buy_names"):
+    assert list(block["trading"]) == ["rank", "rank_check", "buy_names"]
+    for rule in block["trading"]:
         stats = block["trading"][rule]
         assert set(stats) == BASELINES | {"always_buy", "market_buy_and_hold"}
         assert len(block["trading_comparisons"][rule]["vs_buy_and_hold"]) == 5
@@ -42,7 +42,7 @@ def test_locked_run_writes_everything_and_draws_no_conclusion_about_jev(cfg, pri
     assert preds["date"].max() < pd.Timestamp(cfg["splits"]["holdout_start"])
     assert {"y_true", "fwd_ret", "pred", "score", "p_sell", "p_hold", "p_buy", "fold", "segment"} <= set(preds.columns)
     daily = pd.read_parquet(out_dir / "daily_returns.parquet")
-    assert set(daily["rule"]) == {"rank", "buy_names", "passive"}
+    assert set(daily["rule"]) == {"rank", "rank_check", "buy_names", "passive"}
 
     report = (out_dir / "report.md").read_text(encoding="utf-8")
     assert "insufficient evidence" in report
@@ -83,6 +83,8 @@ def test_local_backtest_page_is_self_contained(cfg, prices, tmp_path):
     out = run_benchmark(cfg, "page", prices=prices, results_dir=tmp_path / "results")
     payload = build_payload(out["out_dir"])
     assert payload["defaults"] == {"segment": "dev", "rule": "rank", "horizon": 5}
+    assert payload["rule_labels"] == {"rank": "Top 2 of 6 by score", "rank_check": "Top 1 of 6 by score",
+                                      "buy_names": "BUY names only"}
     view = payload["views"]["dev|rank|5"]
     assert {s["id"] for s in view["strategies"]} == BASELINES | {"always_buy", "market_buy_and_hold"}
     assert all(len(v) == len(view["dates"]) for v in view["growth"].values())

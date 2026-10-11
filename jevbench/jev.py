@@ -38,38 +38,39 @@ VARIANTS = PROVIDERS["jev"]["prefix"]   # variant name -> column prefix
 
 # feature -> (group, description, format)
 FEATURE_TEXT = {
-    **{f"ret_{n}": ("stock", f"return over the past {n} trading day{'s' if n > 1 else ''}", "pct")
+    **{f"ret_{n}": ("asset", f"return over the past {n} trading day{'s' if n > 1 else ''}", "pct")
        for n in (1, 5, 20, 60, 120, 250)},
-    "vol_20": ("stock", "daily volatility over the past 20 trading days", "upct"),
-    "vol_60": ("stock", "daily volatility over the past 60 trading days", "upct"),
-    "rsi_14": ("stock", "14-day relative strength index, 0 to 100", "num"),
-    "dist_sma_20": ("stock", "price versus its 20-day average", "pct"),
-    "dist_sma_50": ("stock", "price versus its 50-day average", "pct"),
-    "dist_sma_200": ("stock", "price versus its 200-day average", "pct"),
-    "macd_hist": ("stock", "MACD histogram as a share of price", "pct"),
-    "vol_ratio_20": ("stock", "trading volume today versus its 20-day average", "ratio"),
-    "dist_52w_high": ("stock", "price versus its 52-week high", "pct"),
-    "bb_z_20": ("stock", "distance from the 20-day average in standard deviations", "num"),
-    "atr_14": ("stock", "average daily trading range over 14 days as a share of price", "upct"),
-    "mkt_ret_5": ("market", "market index return over the past 5 trading days", "pct"),
-    "mkt_ret_20": ("market", "market index return over the past 20 trading days", "pct"),
-    "mkt_vol_20": ("market", "market index daily volatility over the past 20 trading days", "upct"),
-    "mkt_dist_sma_200": ("market", "market index versus its 200-day average", "pct"),
-    "rel_ret_20": ("stock", "return minus market return over the past 20 trading days", "pct"),
-    "rel_ret_60": ("stock", "return minus market return over the past 60 trading days", "pct"),
-    "xs_rank_ret_5": ("stock", "percentile of its 5-day return among large stocks today", "pctile"),
-    "xs_rank_ret_20": ("stock", "percentile of its 20-day return among large stocks today", "pctile"),
-    "xs_rank_ret_120": ("stock", "percentile of its 120-day return among large stocks today", "pctile"),
-    "xs_rank_vol_20": ("stock", "percentile of its 20-day volatility among large stocks today", "pctile"),
+    "vol_20": ("asset", "daily volatility over the past 20 trading days", "upct"),
+    "vol_60": ("asset", "daily volatility over the past 60 trading days", "upct"),
+    "rsi_14": ("asset", "14-day relative strength index, 0 to 100", "num"),
+    "dist_sma_20": ("asset", "price versus its 20-day average", "pct"),
+    "dist_sma_50": ("asset", "price versus its 50-day average", "pct"),
+    "dist_sma_200": ("asset", "price versus its 200-day average", "pct"),
+    "macd_hist": ("asset", "MACD histogram as a share of price", "pct"),
+    "vol_ratio_20": ("asset", "trading volume today versus its 20-day average", "ratio"),
+    "dist_52w_high": ("asset", "price versus its 52-week high", "pct"),
+    "bb_z_20": ("asset", "distance from the 20-day average in standard deviations", "num"),
+    "atr_14": ("asset", "average daily trading range over 14 days as a share of price", "upct"),
+    "mkt_ret_5": ("market", "US stock market index return over the past 5 trading days", "pct"),
+    "mkt_ret_20": ("market", "US stock market index return over the past 20 trading days", "pct"),
+    "mkt_vol_20": ("market", "US stock market index daily volatility over the past 20 trading days", "upct"),
+    "mkt_dist_sma_200": ("market", "US stock market index versus its 200-day average", "pct"),
+    "rel_ret_20": ("asset", "return minus US stock market index return over the past 20 trading days", "pct"),
+    "rel_ret_60": ("asset", "return minus US stock market index return over the past 60 trading days", "pct"),
+    "xs_rank_ret_5": ("asset", "percentile of its 5-day return among the assets in its group today", "pctile"),
+    "xs_rank_ret_20": ("asset", "percentile of its 20-day return among the assets in its group today", "pctile"),
+    "xs_rank_ret_120": ("asset", "percentile of its 120-day return among the assets in its group today", "pctile"),
+    "xs_rank_vol_20": ("asset", "percentile of its 20-day volatility among the assets in its group today", "pctile"),
 }
 assert set(FEATURE_TEXT) == set(FEATURES)
 
 STATE_ABOUT = (
-    "Technical snapshot of one large US stock taken at the market close. Each reading gives "
-    "its level compared with the recent range across large stocks, then the value."
+    "Technical snapshot of one traded asset taken at the market close. It belongs to a small "
+    "group of assets of different kinds. Each reading gives its level compared with the recent "
+    "range across that group, then the value."
 )
 EXAMPLES_ABOUT = (
-    "Earlier snapshots of other stock-days with what happened next. BUY means the price rose "
+    "Earlier snapshots of assets from the same group with what happened next. BUY means the price rose "
     "by more than the threshold, SELL means it fell by more than the threshold, HOLD means "
     "it stayed inside the threshold."
 )
@@ -107,7 +108,7 @@ def _format(value: float, kind: str) -> str:
 
 def snapshot(values: np.ndarray, cutpoints: np.ndarray) -> dict:
     """Render one row's feature values as text. `cutpoints` has one row per feature."""
-    out: dict[str, dict[str, str]] = {"stock": {}, "market": {}}
+    out: dict[str, dict[str, str]] = {"asset": {}, "market": {}}
     for i, feature in enumerate(FEATURES):
         group, description, kind = FEATURE_TEXT[feature]
         bucket = BUCKET_LABELS[int(np.searchsorted(cutpoints[i], values[i], side="right"))]
@@ -129,7 +130,7 @@ def build_questions(cfg: dict) -> dict:
     questions = {}
     for h in cfg["task"]["horizons"]:
         days = f"{h} trading day{'s' if h > 1 else ''}"
-        setup = (f"The stock is bought at the next market open and held for {days}. "
+        setup = (f"The asset is bought at the next market open and held for {days}. "
                  f"The threshold is {move_threshold_text(cfg, h)}.")
         criteria = {
             "BUY": "The price rises by more than the threshold.",
@@ -144,7 +145,7 @@ def build_questions(cfg: dict) -> dict:
             }
         questions[f"h{h}_up"] = {
             "type": "noul",
-            "instructions": (f"The stock is bought at the next market open and held for {days}. "
+            "instructions": (f"The asset is bought at the next market open and held for {days}. "
                              "Will its price be higher at the end of that period than at the purchase?"),
         }
         questions[f"h{h}_big"] = {

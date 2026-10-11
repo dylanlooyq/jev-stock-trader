@@ -9,7 +9,8 @@ Two trade rules share that engine:
 - "rank" (primary): each day hold the top fraction of stocks by ranking score, equally
   weighted, so the book is fully invested and differs from buy and hold only in which
   stocks it holds.
-- "buy_names" (secondary): hold the stocks the model labels BUY; the rest is cash.
+- "rank_check": the same rule at a second, more concentrated fraction; a declared check.
+- "buy_names" (secondary): hold the assets the model labels BUY; the rest is cash.
 
 Simplifications, all stated in the report: weights are not drifted between rebalances,
 idle cash earns the risk-free rate, and one all-in cost per unit of turnover stands in
@@ -22,7 +23,26 @@ import pandas as pd
 
 from . import BUY, SELL
 
-RULES = ("rank", "buy_names")
+def trade_rules(cfg: dict) -> dict[str, dict]:
+    """Portfolio rules to evaluate, as run_backtest keyword arguments. The first is listed first in reports.
+
+    `rank_check` is the ranking rule at a second, more concentrated fraction. It is a
+    declared robustness check, never the basis of the verdict.
+    """
+    bt = cfg["backtest"]
+    rules = {"rank": {"rule": "rank", "rank_fraction": float(bt["rank_fraction"])}}
+    if bt.get("rank_check_fraction") is not None:
+        rules["rank_check"] = {"rule": "rank", "rank_fraction": float(bt["rank_check_fraction"])}
+    rules["buy_names"] = {"rule": "buy_names"}
+    return rules
+
+
+def names_held(cfg: dict, rule: str) -> int | None:
+    """How many assets a ranking rule holds when every asset in the universe has a score."""
+    spec = trade_rules(cfg).get(rule, {})
+    if spec.get("rule") != "rank":
+        return None
+    return max(1, int(round(len(cfg["data"]["tickers"]) * spec["rank_fraction"])))
 
 
 def open_to_open_returns(prices: pd.DataFrame, market_ticker: str) -> tuple[pd.DataFrame, pd.Series]:

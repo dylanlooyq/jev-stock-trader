@@ -133,7 +133,7 @@
   const state = { segment: DATA.defaults.segment, rule: DATA.defaults.rule, horizon: DATA.defaults.horizon, hidden: new Set() };
 
   const SEGMENTS = { all: 'All folds', dev: 'Before the final two years', holdout: 'Final two years' };
-  const RULES = { rank: `Top ${DATA.run.rank_pct}% by score`, buy_names: 'BUY names only' };
+  const RULES = DATA.rule_labels;
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   const el = (tag, cls, text) => {
@@ -411,22 +411,22 @@
     caution.replaceChildren();
     if (run.smoke) caution.appendChild(el('span', 'flag', 'Pipeline check, not a finding. '));
     else if (!run.full_window) caution.appendChild(el('span', 'flag', 'Partial window, not the verdict run. '));
-    caution.append(`${run.stocks} stocks, ${run.folds} walk-forward folds, ${v.first_date} to ${v.last_date}. Trading cost ${run.cost_bps} basis points per trade. `);
+    caution.append(`${run.assets} assets, ${run.folds} walk-forward folds, ${v.first_date} to ${v.last_date}. Trading cost ${run.cost_bps} basis points per trade. `);
     caution.append(run.external_ran.length
       ? `External classifiers included: ${run.external_ran.join(', ')}.`
       : 'Jev has not been run, so no Jev strategy appears here.');
     if (v.thinned > 1) caution.append(` Lines show every ${v.thinned}th trading day; all statistics use every day.`);
 
-    $('growth-note').textContent = state.rule === 'rank'
-      ? `Each strategy holds the top ${run.rank_pct}% of stocks by its own score, equally weighted and fully invested. It differs from buy and hold only in which stocks it holds.`
-      : `Each strategy holds only the stocks its model labels BUY and keeps the rest in cash${run.risk_free === 'tbill' ? ' earning the Treasury bill rate' : ''}, so it is partly invested. Both buy-and-hold lines are fully invested.`;
+    $('growth-note').textContent = state.rule !== 'buy_names'
+      ? `Each strategy holds its top ${run.held[state.rule]} of ${run.assets} assets by its own score, equally weighted and fully invested. It differs from buy and hold only in which assets it holds.${state.rule === 'rank_check' ? ' This concentrated version is a declared check, not the primary test.' : ''}`
+      : `Each strategy holds only the assets its model labels BUY and keeps the rest in cash${run.risk_free === 'tbill' ? ' earning the Treasury bill rate' : ''}, so it is partly invested. Both buy-and-hold lines are fully invested.`;
 
     const best = tested.slice().sort((a, b) => (v.stats[b].sharpe ?? -9) - (v.stats[a].sharpe ?? -9))[0];
     const label = (id) => (v.strategies.find((s) => s.id === id) || {}).label || id;
     const invested = tested.length ? tested.reduce((sum, id) => sum + (v.stats[id].mean_exposure || 0), 0) / tested.length : null;
     const tiles = [
       ['Highest net Sharpe ratio among strategies', best ? num(v.stats[best].sharpe) : 'n/a', best ? label(best) : ''],
-      ['Equal-weight buy and hold', num((v.stats.always_buy || {}).sharpe), 'Net Sharpe ratio, same stocks and costs'],
+      ['Equal-weight buy and hold', num((v.stats.always_buy || {}).sharpe), 'Net Sharpe ratio, same assets and costs'],
       [`${run.market} buy and hold`, num((v.stats.market_buy_and_hold || {}).sharpe), 'Sharpe ratio, shown for context'],
       ['Average share invested, strategies', pct(invested, 0), 'Buy and hold is fully invested'],
     ];

@@ -72,6 +72,14 @@ def clean_prices(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     return df, dropped
 
 
+def keep_market_days(prices: pd.DataFrame, market_ticker: str) -> tuple[pd.DataFrame, int]:
+    """Drop rows dated when the market ticker did not trade (weekends and holidays of assets
+    that trade every day), so every asset shares one calendar and a "trading day" means the same
+    thing for all of them. Returns the kept rows and the number dropped."""
+    on_calendar = prices["date"].isin(prices.loc[prices["ticker"] == market_ticker, "date"])
+    return prices[on_calendar].reset_index(drop=True), int((~on_calendar).sum())
+
+
 def download_prices(cfg: dict, force: bool = False, batch_size: int = 20, retries: int = 4) -> dict:
     """Download the configured universe plus the market ticker and freeze it to disk."""
     parquet_path, manifest_path = cache_paths(cfg)
@@ -107,6 +115,7 @@ def download_prices(cfg: dict, force: bool = False, batch_size: int = 20, retrie
     prices, dropped = clean_prices(pd.concat(frames, ignore_index=True))
     if d["market_ticker"] not in set(prices["ticker"]):
         raise RuntimeError(f"Market ticker {d['market_ticker']} failed to download.")
+    prices, dropped["off_market_calendar"] = keep_market_days(prices, d["market_ticker"])
 
     parquet_path.parent.mkdir(parents=True, exist_ok=True)
     prices.to_parquet(parquet_path, index=False)
@@ -235,10 +244,10 @@ def quality_report(prices: pd.DataFrame, market_ticker: str) -> dict:
         if n_missing:
             gaps[ticker] = n_missing
     return {
-        "n_stocks": int(stocks["ticker"].nunique()),
+        "n_assets": int(stocks["ticker"].nunique()),
         "n_rows": int(len(stocks)),
         "trading_days": int(calendar.nunique()),
-        "stocks_with_missing_days": gaps,
+        "assets_with_missing_days": gaps,
         "zero_volume_rows": int((stocks["volume"] == 0).sum()),
         "abs_daily_return_over_25pct": int((ret.abs() > 0.25).sum()),
         "high_below_low_rows": int((stocks["high"] < stocks["low"]).sum()),

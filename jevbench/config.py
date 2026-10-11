@@ -47,6 +47,10 @@ def validate_config(cfg: dict) -> None:
         raise ValueError("backtest.mode must be long_only or long_short")
     if cfg["backtest"]["primary_rule"] not in ("rank", "buy_names"):
         raise ValueError("backtest.primary_rule must be rank or buy_names")
+    for key in ("rank_fraction", "rank_check_fraction"):
+        value = cfg["backtest"].get(key)
+        if value is not None and not 0 < float(value) <= 1:
+            raise ValueError(f"backtest.{key} must be in (0, 1]")
     if cfg["backtest"]["risk_free"] not in ("tbill", "zero"):
         raise ValueError("backtest.risk_free must be tbill or zero")
     if len(set(cfg["data"]["tickers"])) != len(cfg["data"]["tickers"]):

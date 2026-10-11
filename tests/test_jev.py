@@ -71,7 +71,7 @@ def test_state_reveals_no_ticker_date_or_price_level(ctx, cfg):
             assert "date" not in text.lower().replace("update", "")
             assert not re.search(r"\$\s?\d", text)
     snapshot = ctx.state(len(ctx.full) - 1, False)["snapshot"]
-    assert len(snapshot["stock"]) + len(snapshot["market"]) == len(FEATURES)
+    assert len(snapshot["asset"]) + len(snapshot["market"]) == len(FEATURES)
     assert all(v.split(" (")[0] in jev.BUCKET_LABELS for group in snapshot.values() for v in group.values())
 
 

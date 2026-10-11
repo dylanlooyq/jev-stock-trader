@@ -85,7 +85,7 @@ def run_benchmark(cfg: dict, run_name: str, unlock_holdout: bool = False, prices
     if not unlock_holdout:
         prices = lock_holdout(prices, cfg)
 
-    print(f"Run {run_name}: {prices['ticker'].nunique() - 1} stocks, holdout unlocked: {unlock_holdout}")
+    print(f"Run {run_name}: {prices['ticker'].nunique() - 1} assets, full window: {unlock_holdout}")
     run = walk_forward(prices, cfg, unlock_holdout=unlock_holdout)
     metrics, per_stock, daily = summarise(run, prices, cfg, risk_free)
     metrics = _clean(metrics)

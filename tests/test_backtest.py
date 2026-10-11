@@ -195,3 +195,18 @@ def test_passive_series_has_the_backtest_shape():
     assert out["net"].tolist() == [0.01, 0.0, -0.01, 0.0]
     assert out["excess"].tolist() == pytest.approx([0.0099, -0.0001, -0.0101, -0.0001])
     assert (out["exposure"] == 1.0).all() and out["cost"].sum() == 0.0
+
+
+def test_configured_rules_hold_three_and_one_of_ten_assets():
+    """Decision D11: top 3 is the primary rule and top 1 is a declared check; both hold whole assets."""
+    from jevbench.backtest import names_held, trade_rules
+    from jevbench.config import load_config
+
+    cfg = load_config()
+    assert list(trade_rules(cfg)) == ["rank", "rank_check", "buy_names"]
+    assert cfg["backtest"]["primary_rule"] == "rank" and len(cfg["data"]["tickers"]) == 10
+    assert names_held(cfg, "rank") == 3 and names_held(cfg, "rank_check") == 1 and names_held(cfg, "buy_names") is None
+    # Before bitcoin has history only nine assets are scored; the counts must not change.
+    nine = pd.DataFrame([np.arange(9.0)], columns=list("ABCDEFGHI"))
+    assert (rank_weights(nine, cfg["backtest"]["rank_fraction"], seed=1).loc[0] > 0).sum() == 3
+    assert (rank_weights(nine, cfg["backtest"]["rank_check_fraction"], seed=1).loc[0] > 0).sum() == 1

@@ -1,7 +1,7 @@
 # jev-stock-trader
 
 A controlled experiment to test whether Jev (TypeSafe's hosted System One model), used as
-a classifier, can outperform traditional machine-learning models for stock trading. Each
+a classifier, can outperform traditional machine-learning models for trading. Each
 model's BUY / HOLD / SELL predictions are turned into a portfolio by the same rule and
 compared with a traditional classifier, with buy and hold, and with a traditional
 classifier that is given Jev's outputs as extra inputs.
@@ -24,13 +24,15 @@ interpreting results, and update it whenever a decision changes. The design is f
 
 ## How it works
 
-- 100 large US stocks, daily bars from yfinance, 2010 to 2026.
+- Ten assets of different kinds (S&P 500, gold, bitcoin, long Treasuries, developed and
+  emerging stocks, oil, real estate, the US dollar, high-yield bonds), daily bars from
+  yfinance, 2010 to 2026. The list was chosen with hindsight.
 - Prediction after each close; trade at the next open; labels from volatility-scaled
   forward returns over 1, 5 and 20 trading days.
 - Every model sees the same 27 price and volume features and is scored on identical rows in
   a purged walk-forward design of twelve yearly folds.
 - Jev receives the same features as anonymised text, with no ticker, date or price level.
-- Primary test: net Sharpe ratio of a portfolio holding each model's top 20% of stocks,
+- Primary test: net Sharpe ratio of a portfolio holding each model's top 3 of the 10 assets,
   against a traditional classifier and against equal-weight buy and hold, with
   block-bootstrap intervals. Classification metrics are reported as diagnostics.
 
@@ -39,14 +41,15 @@ interpreting results, and update it whenever a decision changes. The design is f
 Use Python 3.11 with the packages in `requirements.txt`.
 
 ```
-python -m pytest -q                               # 75 tests
+python -m pytest -q                               # 77 tests
 python -m jevbench.run download                   # download and freeze prices and the T-bill rate
-python -m jevbench.run benchmark --name my_run    # first ten folds
+python -m jevbench.run benchmark --name my_run    # first ten folds only
 python -m jevbench.run visualise --name my_run    # results/my_run/backtests.html, opens offline
 ```
 
-Add `--overrides config/smoke.yaml` to any command for a 12-stock check that runs in about
-three minutes. The verdict-window run, the Jev commands (`jev-estimate`, `jev-annotate`)
+Add `--overrides config/smoke.yaml` to any command for a pipeline check that runs in about
+three minutes. It uses 12 stocks outside the experiment's universe on purpose, so testing
+the code reveals nothing about the ten assets. The verdict-window run, the Jev commands (`jev-estimate`, `jev-annotate`)
 and the remaining options are listed in `EXPERIMENT_MEMORY.md` section 9. Jev calls are
 billed and need `TYPESAFE_API_KEY` in a local `.env` file (see `.env.example`).
 

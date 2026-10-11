@@ -5,6 +5,7 @@ import pytest
 
 from jevbench import BUY, HOLD, SELL
 from jevbench.config import deep_update
+from jevbench.data import keep_market_days
 from jevbench.dataset import build_dataset
 from jevbench.features import FEATURES, compute_features
 from jevbench.labels import compute_labels
@@ -124,3 +125,11 @@ def test_dataset_drops_warm_up_and_burn_in_for_every_model(cfg, prices):
     dates_all = sorted(with_burn_in["date"].unique())
     assert ds["date"].min() == dates_all[cfg["dataset"]["burn_in_days"]]
     assert not ds.duplicated(["date", "ticker"]).any()
+
+
+def test_assets_that_trade_every_day_keep_only_market_days(prices):
+    saturday = prices["date"].max() + pd.offsets.Week(weekday=5)
+    extra = prices[prices["ticker"] == "AAA"].tail(1).assign(date=saturday)
+    kept, dropped = keep_market_days(pd.concat([prices, extra], ignore_index=True), MARKET)
+    assert dropped == 1 and saturday not in set(kept["date"])
+    pd.testing.assert_frame_equal(kept, prices.reset_index(drop=True))

@@ -8,18 +8,10 @@ Status markers: **DECIDED** (approved by the project owner), **PROVISIONAL** (pr
 default, implemented, not explicitly approved), **OPEN** (needs a decision or evidence).
 
 Last updated: 2026-10-11. Pipeline implemented and validated on two smoke runs. **No Jev
-call has been made, no full-universe run has been made, and no experimental result
-exists.**
+call has been made.** See section 7 for whether the baseline run has been made.
 
-> **Discrepancy flagged 2026-10-11, unresolved.** This file describes a 100-stock universe.
-> `config/experiment.yaml` at commit `79b2e86` lists 503 S&P 500 constituents
-> (`sp500_2026-10-11`); `config/large_cap_100.yaml` restores the 100-stock list. The change
-> was made by a second session working in this repository at the same time, on the owner's
-> request there to "extend the trading universe to all stocks in S&P500" (referred to in
-> the config as decision D9). D9 has not been written into this file yet. Until it is:
-> treat the universe as **changing to the S&P 500**, treat the runtime and Jev cost
-> estimates in section 9 as roughly five times too low, and record a new freeze commit in
-> section 4 once D9 is written up.
+Two sessions worked on this repository in parallel on 2026-10-11; their work was combined
+into one design at the freeze commit named in section 4.
 
 ---
 
@@ -43,6 +35,10 @@ confined to one horizon, fold, regime or sensitivity variant.
 **Evidence against:** no reliable difference, or Jev worse, on the primary test.
 "Insufficient evidence" is a valid and likely conclusion: section 5 of every report states
 the smallest difference the run could have detected.
+
+The thesis says "stock trading". Since decision D10 the universe is ten assets of
+different kinds, only some of them stocks (section 3); the question and the test are
+otherwise unchanged.
 
 *Superseded 2026-10-11:* the first version of this section framed the question as
 classification quality (macro-F1). Classification is now a diagnostic.
@@ -97,10 +93,39 @@ is not practical here.
 
 ### Data — **DECIDED 2026-10-11**
 
-- **Market and universe:** 100 large US stocks, fixed list `us_large_cap_100_v1` in
-  `config/experiment.yaml`, plus SPY as market proxy. The list was chosen in 2026 with
-  hindsight. **It is not point-in-time; survivorship and selection bias are accepted and
-  must be stated in every report.**
+- **Market and universe (D10, owner, 2026-10-11):** ten assets of different kinds, list
+  `multi_asset_10_v1` in `config/experiment.yaml`, plus SPY as market proxy. The owner
+  named the S&P 500, gold and bitcoin and asked for seven more to be chosen:
+
+  | Ticker | Exposure | Modelling rows start |
+  |---|---|---|
+  | `IVV` | S&P 500 (SPY is the market proxy and is never held, so the index is traded through IVV) | 2011-04 |
+  | `GLD` | Gold | 2011-04 |
+  | `BTC-USD` | Bitcoin, spot series; first bar 2014-09-17 | 2015-09 |
+  | `TLT` | US Treasury bonds, 20+ years | 2011-04 |
+  | `EFA` | Developed-market stocks outside North America | 2011-04 |
+  | `EEM` | Emerging-market stocks | 2011-04 |
+  | `USO` | Crude oil | 2011-04 |
+  | `VNQ` | US real estate investment trusts | 2011-04 |
+  | `UUP` | US dollar against a basket of currencies | 2011-04 |
+  | `HYG` | US high-yield corporate bonds | 2011-04 |
+
+  **The list was chosen in 2026 with hindsight** (bitcoin above all) **and that must be
+  stated in every report.** Nine assets are available for the first test fold; bitcoin
+  joins in 2015-09.
+  - *Why:* the Jev bill for the S&P 500 universe (about $900) was too high for the owner.
+    Ten assets cost about $20 (section 9).
+  - *Superseded 2026-10-11, D9:* every S&P 500 constituent as listed on 2026-10-11 (503
+    tickers, `sp500_2026-10-11`, dataset `725401c78cad`, frozen but never modelled). Still
+    runnable with `--overrides config/sp500.yaml`. It is not point-in-time: 190 of the 503
+    joined the index after 2014-10-01. If it is ever revived, decide first whether to use
+    each stock only from its index-join date, and see section 8, items 18 and 19.
+  - *Superseded 2026-10-11:* 100 large US stocks, hand-fixed list `us_large_cap_100_v1`.
+    Still runnable with `--overrides config/large_cap_100.yaml`.
+- **One calendar for every asset:** rows dated when the market proxy did not trade are
+  dropped at download (`data.keep_market_days`), so bitcoin's weekend and holiday bars are
+  removed (1,370 rows) and a "trading day" means the same for all ten. Bitcoin's return
+  from Friday's open to Monday's open therefore spans the weekend.
 - **Source:** yfinance daily bars, 2010-01-01 to 2026-09-30. Downloaded once, frozen as
   parquet with a SHA-256; that hash is the dataset version.
 - **Risk-free rate:** 13-week Treasury bill yield (`^IRX`, yfinance), frozen the same way.
@@ -142,21 +167,27 @@ is not practical here.
 - The verdict rests on **all twelve folds pooled, 2014-10 to 2026-09** (segment `all`).
   Results for the first ten folds and the last two are also reported separately as a
   robustness check.
-- **Design frozen at commit `79b2e86`** (2026-10-11). Basis for treating every fold
-  as out-of-sample: when the design was fixed, the only results seen were two 12-stock
-  smoke runs over three folds; no model is tuned on test folds; Jev wording `v1` had
-  never been sent to the API.
+- **Design frozen at commit `FREEZE_COMMIT`** (2026-10-11). Basis for treating every
+  fold as out-of-sample: when the design was fixed, the only results seen were two
+  12-stock smoke runs over three folds, on a universe that is no longer used; no model is
+  tuned on test folds; no question wording had been sent to any API; nothing had been run
+  on the ten assets.
+- That commit includes everything decided on 2026-10-11: the ten-asset universe and
+  single-calendar rule (D10), question wording `v2` (section 5), and the ranking rule of
+  top 3 with a top-1 check (D11, section 6).
+- *Superseded:* an earlier freeze was recorded at commit `79b2e86`, before D10 and D11.
+  No full-universe run was made under it.
 - The code still removes data from 2024-10-01 onward unless a run is started with
   `--unlock-holdout --confirm-design-frozen`. That switch now means "run the verdict
   window". A run without it is a partial-window run and says so in its report.
-- **Jev wording `v1` gets one attempt.** A pilot restricted to dates before 2014-10
+- **Jev wording `v2` gets one attempt.** A pilot restricted to dates before 2014-10
   (`--pilot N`) may check that the client works and outputs are not degenerate. If the
   wording is changed after any evaluated date has been scored, later results are
   exploratory.
 - Values frozen without explicit owner sign-off (marked \* in sections 3 and 6): horizons
-  and primary horizon, k = 0.5, 5 bps cost, top-20% ranking fraction, Sharpe margin 0.2.
-  **Until the first full-universe run is made they can still be changed cleanly**; doing
-  so means recording a new freeze commit here.
+  and primary horizon, k = 0.5, 5 bps cost, Sharpe margin 0.2. The owner was offered the
+  chance to change them before the first full run and went ahead with the run. **They are
+  now fixed**: changing any of them makes later results exploratory.
 
 *Superseded 2026-10-11:* the earlier plan held 2024-10 to 2026-09 as a locked holdout and
 the sole confirmatory test. Dropped because a 2-year window cannot detect a realistic
@@ -166,7 +197,7 @@ Sharpe difference.
 
 - No ticker, name, calendar date or price level.
 - Each feature is shown as a bucket plus its value. Bucket cut-points are quantiles
-  (10/30/70/90%) of all stocks over the 750 trading days *before* the row's month.
+  (10/30/70/90%) of all assets over the 750 trading days *before* the row's month.
 - Example variant: 4 examples per class (by primary-horizon label), drawn from the 250
   trading days before the month, only rows whose label windows for every horizon had
   closed before the month began. One example set per month.
@@ -219,23 +250,38 @@ general-purpose language model knows far more market history than Jev is documen
 so contamination risk is higher and the anonymisation check (section 8, item 1) is
 mandatory for it.
 
-Question wording versions: `v1` (current; never sent to any API).
+Question wording versions:
+- `v1`: described "one large US stock". Never sent to any API. Superseded 2026-10-11.
+- `v2` (current; never sent to any API): the same layout and questions with "stock"
+  replaced by "asset", the snapshot introduced as one of "a small group of assets of
+  different kinds", percentiles described as "among the assets in its group", and the
+  market readings named "US stock market index". Required by D10; no other change.
 
 ## 6. Evaluation Metrics and Decision Criteria — **DECIDED 2026-10-11 (D5 to D7)**
 
 - **Primary test:** net Sharpe ratio difference at the 5-day horizon, on the verdict
   window, for the ranking portfolio.
-- **Ranking portfolio (primary rule):** each day hold the top 20%\* of stocks by score,
-  equally weighted, opened at the next open and held *h* days in *h* daily tranches. Fully
-  invested, so it differs from buy and hold only in which stocks it holds. Score is
-  P(BUY) − P(SELL) for probabilistic models and the raw signal strength for rules. Stocks
-  without a score are never held. Ties are broken at random with a fixed seed, so
-  `majority` and `stratified_random` both hold a random selection: the no-skill reference.
-- **BUY-names portfolio (secondary rule):** hold the stocks labelled BUY, capped at 10%
-  each per tranche; the rest is cash.
-- **Buy-and-hold benchmark:** `always_buy`, every stock equally weighted through the same
-  engine and costs. SPY (`market_buy_and_hold`) is context only, because the stock list
-  was chosen with hindsight.
+- **Ranking portfolio (primary rule, `rank`; D11, owner, 2026-10-11):** each day hold the
+  **top 3 of the 10 assets** by score (`rank_fraction: 0.3`; also 3 while only nine assets
+  have history), equally weighted, opened at the next open and held *h* days in *h* daily
+  tranches. Fully invested, so it differs from buy and hold only in which assets it holds.
+  Score is P(BUY) − P(SELL) for probabilistic models and the raw signal strength for
+  rules. Assets without a score are never held. Ties are broken at random with a fixed
+  seed, so `majority` and `stratified_random` both hold a random selection: the no-skill
+  reference.
+- **Top-1 check (`rank_check`; D11):** the same rule holding only the single top asset
+  (`rank_check_fraction: 0.1`). Declared before any result was seen and reported beside
+  the primary rule in every run. **It never decides the verdict.** The owner asked whether
+  holding 1 asset made sense as the main test; it was kept as a check because it is the
+  noisiest version, tests only the top pick, is likely to be dominated by bitcoin, and
+  gives up the diversification that buy and hold keeps.
+- **BUY-names portfolio (secondary rule, `buy_names`):** hold the assets labelled BUY,
+  capped at 10% each per tranche; the rest is cash. With ten assets the cap keeps this
+  book far from fully invested, so read its Sharpe ratio, not its return.
+- **Buy-and-hold benchmark:** `always_buy`, every asset equally weighted through the same
+  engine and costs. SPY (`market_buy_and_hold`) is context only.
+- *Superseded 2026-10-11 by D11:* top 20% of the universe (2 of 10), a default the owner
+  had not signed off.
 - **Costs and cash:** 5 bps\* per unit of turnover; sensitivities at 2 and 10 bps. Idle
   cash earns the T-bill rate. Sharpe and Sortino use returns in excess of that rate.
 - **Also reported:** net return, CAGR, maximum drawdown, Calmar, turnover, exposure, alpha
@@ -268,8 +314,11 @@ BUY-names as the main trading test.
 | 2026-10-11 | `8e9de43` | Owner decisions, round 2 (D5 to D8): trading primary, ranking portfolio, equal-weight buy-and-hold benchmark, verdict on all twelve folds with the design frozen now | Sections 1, 4, 6 | Decided |
 | 2026-10-11 | `79b2e86` | D5 to D8 implemented; provider registry added; 75 tests. Smoke run `smoke_v2_2026-10-11` (same 12 stocks and folds) | Runs end to end. Interval on a Sharpe difference about ±0.76 at 5 days, so this run could not detect a difference below about 1.1 | **Not a finding.** With 12 stocks the ranking portfolio holds 2 names |
 | 2026-10-11 | `79b2e86` | Owner requests, round 3: backtest page as a local HTML file; openjev.com inspected; room reserved for an OpenAI classifier | `visualise` command; sections 3 and 5 | Done. openjev.com is not Jev and was not downloaded or run |
+| 2026-10-11 | `79b2e86` | Owner decision D9: universe = all 503 S&P 500 tickers listed on 2026-10-11. Prices downloaded and frozen as dataset `725401c78cad` | 502 stocks obtained (`VYLR` has no bars before 2026-10); 1,984,450 rows; nothing dropped in cleaning. Stale pre-listing bars found in three tickers (section 8, item 18) | Superseded by D10 the same day. Data frozen; **no model was run on it** |
+| 2026-10-11 | `FREEZE_COMMIT` | Owner decision D10: universe = ten assets (`multi_asset_10_v1`), because the S&P 500 Jev bill was too high. Calendar rule and wording `v2` added. Prices frozen as dataset `4df028245fc7` | All 11 tickers obtained; 45,137 rows; 1,370 off-calendar bitcoin rows dropped; no gaps, no zero-volume rows. 32,839 modelling rows through 2024-09 | Decided |
+| 2026-10-11 | `FREEZE_COMMIT` | Owner decision D11: ranking rule holds the top 3 of 10 assets; top 1 reported as a declared check. Both sessions' work combined; outputs reworded from "stocks" to "assets"; 77 tests | Sections 4 and 6 | Decided; new freeze recorded |
 
-No full-universe run, no Jev run and no verdict-window run has been made.
+BASELINE_STATUS
 
 ## 8. Known Failure Modes and Pitfalls
 
@@ -306,6 +355,27 @@ No full-universe run, no Jev run and no verdict-window run has been made.
 16. **Token estimates are rough** (3.5 characters per token) until a pilot reports usage.
 17. **Sharpe ratios changed definition** on 2026-10-11 (now in excess of the T-bill rate).
     Do not compare the first smoke run's figures with later ones.
+18. **Stale bars before a US listing** (S&P 500 override only). In dataset `725401c78cad`,
+    `SW` (to 2024-07), `FERG` (to 2021-03) and `AMCR` (to 2019-06) carry 5,859 zero-volume
+    rows from before their US listings, nearly all with a flat price. Nothing removes them.
+19. **Two share classes of one company** (S&P 500 override only: GOOGL/GOOG, FOXA/FOX,
+    NWSA/NWS) get near-identical scores, so the ranking portfolio can hold one company twice.
+20. **Ten assets is a small universe** (see item 13). The ranking portfolio holds 3 of the
+    10, and the top-1 check holds one. Expect a wide interval on any Sharpe difference
+    against a margin of 0.2; section 7 records the measured figure. "No reliable
+    difference" is the likely outcome for small true effects.
+21. **Assets are recognisable from their readings.** Bucket cut-points pool all ten
+    assets, so bitcoin always reads as "very high" volatility and the dollar fund as "very
+    low"; the S&P 500 fund has a market-relative return of zero. The state hides the
+    ticker but not, in effect, the asset. This raises the contamination risk in item 1
+    and makes the planned anonymisation check more important.
+22. **Bitcoin is executed with no delay.** Its daily bar closes at midnight UTC, the same
+    instant as the next bar's open, so its signal and its fill share one price. The funds
+    wait from the 16:00 close to the next 09:30 open. No future data is used, but
+    bitcoin's fills are optimistic, and 5 bps understates its trading cost.
+23. **Hindsight in the asset list.** Bitcoin was chosen knowing its history; equal-weight
+    buy and hold of the ten is flattered by it from 2015-09. The comparison between models
+    and that benchmark uses the same assets, so this inflates levels more than differences.
 
 ## 9. Architecture and Reproducibility
 
@@ -325,7 +395,7 @@ per-fit seed = seed + 1000·h + fold.
 | `jevbench/evaluate.py`, `stats.py`, `backtest.py` | Metrics, bootstrap, trading simulation |
 | `jevbench/benchmark.py`, `report.py`, `run.py` | Orchestration, report, command line |
 | `jevbench/visualise.py`, `visualise_template.html` | Self-contained local HTML page of a run's backtests |
-| `tests/` | 75 tests: leakage, labels, splits, isolation, metrics, bootstrap, trade timing, ranking rule, Jev, providers |
+| `tests/` | 77 tests: leakage, labels, calendar, splits, isolation, metrics, bootstrap, trade timing, ranking rules, Jev, providers |
 | `results/<run>/` | Config, manifest, metrics, fit log, `report.md`, `backtests.html` (predictions kept locally) |
 
 Commands (run from the repository root with the interpreter above):
@@ -343,28 +413,43 @@ python -m jevbench.run jev-estimate                  # offline cost estimate
 python -m jevbench.run jev-annotate --variant zero --approved-cost-usd <N> [--pilot N | --sample N]
 ```
 
-Add `--overrides config/smoke.yaml` for the 12-stock check. `report` and `visualise` need a
-run made with the current engine; `smoke_2026-10-11` predates it.
+Add `--overrides config/smoke.yaml` for a fast pipeline check. It deliberately uses 12
+stocks that are *not* in the experiment's universe and only three folds, so checking the
+code never reveals anything about the ten assets. `report` and `visualise` need a run made
+with the current engine; `smoke_2026-10-11` predates it. `config/sp500.yaml` and
+`config/large_cap_100.yaml` restore the two superseded stock universes.
 
 Measured or estimated cost (2026-10-11):
-- Smoke benchmark: 155 s. Full baseline run: about 1.5 to 2 hours (extrapolated from
-  single-fit timings at 250k rows; not yet run).
-- Jev, full universe, about 390k rows per variant (rough offline estimate): zero-shot
-  about 2,400 tokens per request, about $40; with examples about 9,300 tokens per request,
-  about $150; the token rate limit implies at least 10 hours for the example variant.
+- Smoke benchmark: 155 s.
+- Ten-asset universe, dataset `4df028245fc7`: 32,839 modelling rows through 2024-09;
+  about 37,800 through 2026-09 (extrapolated from price-row counts).
+- Full baseline run on the verdict window: roughly 15 to 30 minutes on this machine
+  (extrapolated from the smoke run, which is a third of the folds; not yet run).
+- Jev (`jev-estimate`, offline, rough): 2,489 tokens per zero-shot request and 9,714 with
+  examples. For the 32,839 rows through 2024-09: $3.43 and $13.40, $16.83 for both
+  variants, and under an hour each at the rate limit. Scaled to the full window: **about
+  $20 for both variants.**
+- *Superseded 2026-10-11 (S&P 500 universe, D9):* 1,578,433 rows through 2024-09; baseline
+  about 7 to 8 hours (one mid-sample fit on 960k rows took 62 s for logreg, 381 s for
+  random forest, 163 s for GBT); Jev about $900 and about 12 + 47 hours; the predictions
+  table would be about 57 million rows with all Jev arms and may not fit in 14 GB.
+- *Superseded 2026-10-11 (100-stock universe):* baseline 1.5 to 2 hours; Jev about 390k
+  rows per variant, about $40 and $150.
 
 ## 10. Outstanding Questions and Next Steps
 
 Needs the owner:
-1. Last chance to change the starred defaults (section 4) before the first full run.
-2. Go-ahead for the full baseline run on the verdict window (about 2 hours, no fees).
-3. `TYPESAFE_API_KEY` in `.env`, and a Jev budget (about $190 for both variants; cheaper
-   with fewer examples per class or weekly sampling of training rows).
-4. For OpenAI: which model, and a budget. For a local open model: hardware with a GPU.
+1. `TYPESAFE_API_KEY` in `.env`, and a Jev budget (about $20 for both variants on the
+   ten assets).
+2. For OpenAI: which model, and a budget. For a local open model: hardware with a GPU.
+
+Settled 2026-10-11: the ranking rule (D11) and the go-ahead for the baseline run on the
+verdict window.
 
 Next steps, in order:
-1. Download the full dataset; review the manifest for failed tickers.
-2. Run the baseline benchmark on the verdict window; record the detectable effect here.
+1. ~~Download the full dataset; review the manifest for failed tickers.~~ Done 2026-10-11
+   (ten assets, none failed).
+2. Baseline benchmark on the verdict window: see section 7.
 3. With a key: `jev-annotate --pilot` (suggested budget $1) to verify the client against
    the live API, measure real token usage and check outputs are not degenerate.
 4. Build and run the anonymisation check (pitfall 1).

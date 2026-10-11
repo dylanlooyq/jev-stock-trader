@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from .backtest import names_held
 from .providers import PROVIDERS, describe_arm
 from .report import detectable_effect
 
@@ -33,12 +34,13 @@ def _strategy(model: str, families: dict, rule: str) -> dict:
     if family in PROVIDERS:
         return {"id": model, "label": describe_arm(model), "kind": PROVIDERS[family]["label"], "chart": True}
     label, chart = LABELS.get(model, model), True
-    if rule == "rank" and model == "stratified_random":
+    ranked = rule != "buy_names"
+    if ranked and model == "stratified_random":
         label = "Random selection"
     if model == "majority":
-        # Under the ranking rule it is identical to random selection; under BUY-names it never trades.
+        # Under a ranking rule it is identical to random selection; under BUY-names it never trades.
         chart = False
-        label = "Always HOLD (same as random selection)" if rule == "rank" else "Always HOLD (never trades)"
+        label = "Always HOLD (same as random selection)" if ranked else "Always HOLD (never trades)"
     return {"id": model, "label": label, "kind": KINDS.get(family, family), "chart": chart}
 
 
@@ -85,19 +87,21 @@ def build_payload(run_dir: Path) -> dict:
                     "power": power,
                 }
 
-    bt = cfg["backtest"]
+    bt, n_assets = cfg["backtest"], len(cfg["data"]["tickers"])
+    rule_labels = {r: ("BUY names only" if r == "buy_names" else f"Top {names_held(cfg, r) or '?'} of {n_assets} by score")
+                   for r in rules}
     return {
         "run": {
             "name": manifest["run_name"], "smoke": cfg["experiment_id"] == "smoke",
             "full_window": bool(manifest["holdout_unlocked"]), "generated": manifest["finished_at_utc"],
-            "commit": manifest["git_commit"], "stocks": len(cfg["data"]["tickers"]),
+            "commit": manifest["git_commit"], "assets": len(cfg["data"]["tickers"]),
             "folds": int(folds["fold_id"].nunique()), "cost_bps": bt["cost_bps_per_side"],
-            "rank_pct": round(float(bt["rank_fraction"]) * 100), "risk_free": manifest.get("risk_free", "zero"),
+            "held": {r: names_held(cfg, r) for r in rules}, "risk_free": manifest.get("risk_free", "zero"),
             "market": cfg["data"]["market_ticker"],
             "external": metrics.get("external_status", {}),
             "external_ran": sorted({families[m] for m in manifest["models_run"] if families.get(m) in PROVIDERS}),
         },
-        "segments": segments, "rules": rules, "horizons": horizons,
+        "segments": segments, "rules": rules, "rule_labels": rule_labels, "horizons": horizons,
         "defaults": {"segment": segments[0], "rule": bt["primary_rule"], "horizon": cfg["task"]["primary_horizon"]},
         "views": views,
     }

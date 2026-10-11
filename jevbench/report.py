@@ -4,12 +4,25 @@ from __future__ import annotations
 import statistics
 
 from . import CLASS_NAMES
+from .backtest import names_held, trade_rules
 from .providers import PROVIDERS, describe_arm
 
-RULE_NAMES = {
-    "rank": "Ranking portfolio: each day hold the top {pct:.0f}% of stocks by score, fully invested",
-    "buy_names": "BUY-names portfolio: hold the stocks labelled BUY, the rest in cash",
-}
+
+
+def rule_descriptions(cfg: dict) -> dict[str, str]:
+    """One plain sentence per portfolio rule in this configuration."""
+    n = len(cfg["data"]["tickers"])
+    out = {}
+    for rule in trade_rules(cfg):
+        held = names_held(cfg, rule)
+        if rule == "buy_names":
+            out[rule] = "BUY-names portfolio: hold the assets labelled BUY, the rest in cash"
+        else:
+            kind = "Ranking portfolio" if rule == "rank" else "Concentrated ranking portfolio (declared check)"
+            out[rule] = f"{kind}: each day hold the top {held} of {n} assets by score, fully invested"
+    return out
+
+
 COMPARISON_HEADERS = ["Comparison", "Difference", "95% interval", "p", "p (Holm)"]
 
 
@@ -91,14 +104,14 @@ def conclusion(metrics: dict, cfg: dict) -> list[str]:
             f"- **Trading performance (primary):** insufficient evidence. No external classifier has been run ({status}).",
             "- **Classification performance:** insufficient evidence, for the same reason.",
             "- **Operational efficiency:** insufficient evidence. No external classifier's runtime or cost has been measured.",
-            "- **Overall:** the evidence does not yet bear on whether Jev outperforms traditional models for stock trading.",
+            "- **Overall:** the evidence does not yet bear on whether Jev outperforms traditional models for trading.",
         ]
 
     held = {c["a"]: c for c in trading["vs_buy_and_hold"] if "diff" in c}
     for provider, groups in ran.items():
         label = PROVIDERS[provider]["label"]
         lines.append(f"**{label}**, {primary}-day horizon, net Sharpe ratio of the "
-                     f"{'ranking' if rule == 'rank' else 'BUY-names'} portfolio. A difference counts as better only "
+                     f"{'BUY-names' if rule == 'buy_names' else 'ranking'} portfolio. A difference counts as better only "
                      f"if it is at least {margin:+.2f}, its interval excludes zero and Holm-adjusted p < {alpha}.\n")
         alone = [c for c in groups["vs_reference"] if "diff" in c and "_signal_" in c["a"]]
         lines.append(f"- **Used alone, against the traditional classifier `{block['reference_classifier']}`:**")
@@ -151,7 +164,8 @@ def _trading_table(stats: dict, rule: str) -> str:
 def render_report(metrics: dict, manifest: dict, cfg: dict) -> str:
     primary, primary_rule = cfg["task"]["primary_horizon"], cfg["backtest"]["primary_rule"]
     label, splits, data, bt = cfg["task"]["label"], cfg["splits"], manifest.get("dataset", {}), cfg["backtest"]
-    rule_text = {k: v.format(pct=float(bt["rank_fraction"]) * 100) for k, v in RULE_NAMES.items()}
+    rule_text = rule_descriptions(cfg)
+    other_rules = [r for r in rule_text if r != primary_rule]
     out: list[str] = [f"# Experiment report: {manifest['run_name']}", ""]
     if cfg["experiment_id"] == "smoke":
         out += ["> **Smoke run.** A small configuration used to validate the pipeline end to end. "
@@ -163,7 +177,7 @@ def render_report(metrics: dict, manifest: dict, cfg: dict) -> str:
         "",
         "## 1. Research question and method",
         "",
-        "Can Jev, used as a classifier, outperform traditional models for stock trading? Each model's "
+        "Can Jev, used as a classifier, outperform traditional models for trading? Each model's "
         "predictions are turned into a portfolio by the same rule and compared on net Sharpe ratio with a "
         "traditional classifier, with equal-weight buy and hold, and with a traditional classifier that is "
         "given Jev's outputs as extra inputs. Every model is fitted and scored on identical observations in "
@@ -178,7 +192,7 @@ def render_report(metrics: dict, manifest: dict, cfg: dict) -> str:
         f"- Source: {cfg['data']['source']} daily bars, {data.get('first_date', 'n/a')} to "
         f"{data.get('last_date', 'n/a')}, downloaded {data.get('downloaded_at_utc', 'n/a')}.",
         "- The universe is a fixed list chosen with hindsight, not point-in-time membership. Survivorship "
-        "bias inflates every absolute return here, including buy and hold of the same stocks.",
+        "bias inflates every absolute return here, including buy and hold of the same assets.",
         "- Prediction after the close of day t; execution at the open of t+1; label return is "
         "open(t+1) to open(t+1+h), dividend and split adjusted.",
         (f"- Labels: BUY / SELL when the forward return is beyond ±{label['k']} × trailing "
@@ -202,12 +216,12 @@ def render_report(metrics: dict, manifest: dict, cfg: dict) -> str:
         "## 4. Trading results (primary test)",
         "",
         f"- Primary rule: {rule_text[primary_rule]}.",
-        f"- Secondary rule: {rule_text['buy_names' if primary_rule == 'rank' else 'rank']}.",
+        *[f"- Also reported: {rule_text[r]}." for r in other_rules],
         f"- Positions open at the next open and are held for h days in h daily tranches. Cost "
         f"{bt['cost_bps_per_side']} bps per unit of turnover. Idle cash earns "
         f"{'the Treasury bill rate' if bt['risk_free'] == 'tbill' else 'nothing'}; Sharpe and Sortino use returns "
         "in excess of that rate.",
-        "- `always_buy` holds every stock equally through the same engine and costs. It is the buy-and-hold "
+        "- `always_buy` holds every asset equally through the same engine and costs. It is the buy-and-hold "
         f"benchmark. `market_buy_and_hold` is {cfg['data']['market_ticker']}, shown for context only.",
         "- Models without scores of their own (`majority`, `stratified_random`) hold a random selection under "
         "the ranking rule, which is that rule's no-skill reference.",
@@ -220,9 +234,9 @@ def render_report(metrics: dict, manifest: dict, cfg: dict) -> str:
     for segment in order:
         seg = metrics["segments"][segment]
         horizons = sorted(seg, key=int)
-        for rule in (primary_rule, "buy_names" if primary_rule == "rank" else "rank"):
-            tag = "primary" if rule == primary_rule else "secondary"
-            out += [f"### {segment_names.get(segment, segment).capitalize()}, {tag} rule", ""]
+        for rule in (primary_rule, *other_rules):
+            tag = "primary rule" if rule == primary_rule else f"`{rule}` rule"
+            out += [f"### {segment_names.get(segment, segment).capitalize()}, {tag}", "", f"{rule_text[rule]}.", ""]
             for h in horizons:
                 block = seg[h]
                 comp = block["trading_comparisons"][rule]
@@ -303,8 +317,8 @@ def render_report(metrics: dict, manifest: dict, cfg: dict) -> str:
                 out += ["Macro-F1 by market regime:", "", table(["Model"] + regimes, [
                     [name] + [fmt(m["by_regime"].get(r)) for r in regimes] for name, m in block["classification"].items()
                 ]), ""]
-                out += ["Macro-F1 across individual stocks:", "", table(
-                    ["Model", "10th pct", "Median", "90th pct", "Stocks"],
+                out += ["Macro-F1 across individual assets:", "", table(
+                    ["Model", "10th pct", "Median", "90th pct", "Assets"],
                     [[name, fmt(m["by_stock"]["p10"]), fmt(m["by_stock"]["median"]), fmt(m["by_stock"]["p90"]),
                       m["by_stock"]["n_stocks"]] for name, m in block["classification"].items()]), ""]
 
@@ -319,7 +333,7 @@ def render_report(metrics: dict, manifest: dict, cfg: dict) -> str:
             f"- `{name}` ({describe_arm(name)}): {reason}" for name, reason in metrics["not_run"].items()] + [""]
 
     out += ["## 8. Limitations", "",
-            "- Survivorship and hindsight bias in the stock list.",
+            "- Survivorship and hindsight bias in the asset list.",
             "- Free vendor data: adjusted prices are revised after later corporate actions; opening prints "
             "may differ from achievable auction fills.",
             "- Jev's training data and knowledge cutoff are undisclosed, so its historical results may "

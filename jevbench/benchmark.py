@@ -6,8 +6,8 @@ import time
 import numpy as np
 import pandas as pd
 
-from .backtest import (RULES, annualised_sharpe, open_to_open_returns, passive_daily, run_backtest, trading_stats,
-                       with_cost)
+from .backtest import (annualised_sharpe, open_to_open_returns, passive_daily, run_backtest, trade_rules,
+                       trading_stats, with_cost)
 from .data import lock_holdout
 from .dataset import build_dataset
 from .evaluate import evaluate_predictions, macro_f1_by, market_regimes
@@ -199,19 +199,20 @@ def summarise(run: dict, prices: pd.DataFrame, cfg: dict,
             market = passive_daily(market_returns.reindex(hold.index), risk_free)
             market_excess = market["excess"].to_numpy()
             trading, trading_comparisons = {}, {}
-            for rule in RULES:
+            rules = trade_rules(cfg)
+            for rule, spec in rules.items():
                 daily = {"always_buy": hold, "market_buy_and_hold": market}
                 stats = {"always_buy": trading_stats(hold, capital, market_excess),
                          "market_buy_and_hold": trading_stats(market, capital, market_excess)}
                 for name, sub in by_model.items():
                     frame = sub[["date", "ticker", "pred", "score"]]
-                    d = run_backtest(frame, returns, h, cfg, rule=rule, risk_free=risk_free)
+                    d = run_backtest(frame, returns, h, cfg, risk_free=risk_free, **spec)
                     aligned = d.index.equals(hold.index)
                     s = trading_stats(d, capital, market_excess if aligned else None)
                     s["sharpe_cost_2bps"] = annualised_sharpe(with_cost(d, 2.0)["excess"].to_numpy())
                     s["sharpe_cost_10bps"] = annualised_sharpe(with_cost(d, 10.0)["excess"].to_numpy())
                     s["sharpe_long_short"] = annualised_sharpe(run_backtest(
-                        frame, returns, h, cfg, rule=rule, mode="long_short", risk_free=risk_free)["excess"].to_numpy())
+                        frame, returns, h, cfg, mode="long_short", risk_free=risk_free, **spec)["excess"].to_numpy())
                     if aligned:
                         ab = alpha_bootstrap(d["excess"].to_numpy(), market_excess, block, n_boot, seed + 13 * h, alpha)
                         s["alpha_ci_low"], s["alpha_ci_high"] = ab["ci_low"], ab["ci_high"]
@@ -221,7 +222,7 @@ def summarise(run: dict, prices: pd.DataFrame, cfg: dict,
                         s["selection_return_per_year"] = float((d["net"] - matched).mean() * 252)
                     stats[name], daily[name] = s, d
                     daily_frames.append(d.reset_index().assign(model=name, horizon=h, segment=segment, rule=rule))
-                if rule == RULES[0]:
+                if rule == next(iter(rules)):
                     for name in ("always_buy", "market_buy_and_hold"):
                         daily_frames.append(daily[name].reset_index().assign(
                             model=name, horizon=h, segment=segment, rule="passive"))
