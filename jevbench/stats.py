@@ -79,6 +79,23 @@ def paired_sharpe_bootstrap(ret_a: np.ndarray, ret_b: np.ndarray, block_len: flo
     return _ci_and_p(float(sharpe(ret_a) - sharpe(ret_b)), boot, alpha)
 
 
+def alpha_bootstrap(excess: np.ndarray, market_excess: np.ndarray, block_len: float, n_boot: int, seed: int,
+                    alpha: float = 0.05) -> dict:
+    """Annualised alpha against the market with a block-bootstrap interval."""
+    excess, market_excess = np.asarray(excess, dtype=float), np.asarray(market_excess, dtype=float)
+
+    def annual_alpha(y: np.ndarray, x: np.ndarray) -> np.ndarray:
+        xm, ym = x.mean(axis=-1, keepdims=True), y.mean(axis=-1, keepdims=True)
+        var = ((x - xm) ** 2).sum(axis=-1)
+        beta = np.divide(((x - xm) * (y - ym)).sum(axis=-1), var, out=np.zeros_like(var), where=var > 0)
+        return (ym[..., 0] - beta * xm[..., 0]) * 252
+
+    idx = stationary_bootstrap_indices(len(excess), block_len, n_boot, np.random.default_rng(seed))
+    boot = annual_alpha(excess[idx], market_excess[idx])
+    out = _ci_and_p(float(annual_alpha(excess, market_excess)), boot, alpha)
+    return {"alpha": out["diff"], "ci_low": out["ci_low"], "ci_high": out["ci_high"], "p_value": out["p_value"]}
+
+
 def holm(p_values: list[float]) -> list[float]:
     """Holm step-down adjusted p-values, returned in the input order."""
     m = len(p_values)

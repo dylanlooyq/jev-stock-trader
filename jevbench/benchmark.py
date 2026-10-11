@@ -6,29 +6,32 @@ import time
 import numpy as np
 import pandas as pd
 
-from . import BUY
-from .backtest import open_to_open_returns, run_backtest, trading_stats
+from .backtest import (RULES, annualised_sharpe, open_to_open_returns, passive_daily, run_backtest, trading_stats,
+                       with_cost)
 from .data import lock_holdout
 from .dataset import build_dataset
 from .evaluate import evaluate_predictions, macro_f1_by, market_regimes
-from .jev import attach_jev_outputs
+from .jev import attach_outputs
 from .models import make_models
+from .providers import PROVIDERS, VARIANTS, arm_name
 from .splits import assert_holdout_locked, fold_frames, make_folds
-from .stats import block_length, holm, paired_macro_f1_bootstrap, paired_sharpe_bootstrap, per_date_confusions
+from .stats import (alpha_bootstrap, block_length, holm, paired_macro_f1_bootstrap, paired_sharpe_bootstrap,
+                    per_date_confusions)
 
-MIN_JEV_COVERAGE = 0.999   # share of a fold's rows that must have been sent to Jev
+MIN_OUTPUT_COVERAGE = 0.999   # share of a fold's rows that must have been sent to a provider
+TRADED_FAMILIES = ("classifier", "rule", *PROVIDERS)
 
 
 def walk_forward(prices: pd.DataFrame, cfg: dict, unlock_holdout: bool = False, log=print) -> dict:
     """Fit and predict every enabled model on every fold and horizon.
 
     Returns predictions (one row per model, horizon and test observation), a fit log,
-    the modelling dataset and the Jev availability status.
+    the modelling dataset and the availability status of each external provider.
     """
     if not unlock_holdout:
         prices = lock_holdout(prices, cfg)
     ds = build_dataset(prices, cfg)
-    ds, jev_status = attach_jev_outputs(ds, cfg)
+    ds, external_status = attach_outputs(ds, cfg)
 
     predictions, fit_log, fold_log = [], [], []
     for h in cfg["task"]["horizons"]:
@@ -56,6 +59,7 @@ def walk_forward(prices: pd.DataFrame, cfg: dict, unlock_holdout: bool = False, 
                 info = model.fit(frames, label_col, seed)
                 fitted = time.perf_counter()
                 pred, proba = model.predict(test)
+                score = model.rank_score(test, pred, proba)
                 done = time.perf_counter()
                 if proba is None:
                     proba = np.full((len(test), 3), np.nan)
@@ -63,7 +67,7 @@ def walk_forward(prices: pd.DataFrame, cfg: dict, unlock_holdout: bool = False, 
                     "model": model.model_id, "horizon": h, "fold": fold.fold_id, "segment": segment,
                     "date": test["date"].to_numpy(), "ticker": test["ticker"].to_numpy(),
                     "y_true": test[label_col].to_numpy(dtype=int),
-                    "fwd_ret": test[f"fwd_ret_{h}"].to_numpy(), "pred": pred,
+                    "fwd_ret": test[f"fwd_ret_{h}"].to_numpy(), "pred": pred, "score": score,
                     "p_sell": proba[:, 0], "p_hold": proba[:, 1], "p_buy": proba[:, 2],
                 }))
                 fit_log.append({**entry, "status": "ok", "fit_seconds": fitted - started,
@@ -75,24 +79,23 @@ def walk_forward(prices: pd.DataFrame, cfg: dict, unlock_holdout: bool = False, 
     if not predictions:
         raise RuntimeError("No predictions were produced.")
     return {"predictions": pd.concat(predictions, ignore_index=True), "fit_log": pd.DataFrame(fit_log),
-            "fold_log": pd.DataFrame(fold_log), "dataset": ds, "jev_status": jev_status}
+            "fold_log": pd.DataFrame(fold_log), "dataset": ds, "external_status": external_status}
 
 
 def _unavailable(model, frames: dict) -> str | None:
-    """Reason a model cannot run on this fold, or None. Only Jev arms can be unavailable."""
+    """Reason a model cannot run on this fold, or None. Only external-provider arms can be unavailable."""
     for col in model.required_columns:
         if col not in frames["test"].columns:
-            return "not run: no saved Jev outputs"
+            return "not run: no saved outputs"
         coverage = min(frames[k][col].notna().mean() for k in ("trainval", "test"))
-        if coverage < MIN_JEV_COVERAGE:
-            return f"not run: Jev outputs cover only {coverage:.1%} of this fold"
+        if coverage < MIN_OUTPUT_COVERAGE:
+            return f"not run: saved outputs cover only {coverage:.1%} of this fold"
     return None
 
 
 def reference_classifier(fit_log: pd.DataFrame, horizon: int) -> str | None:
     """The traditional classifier with the best mean validation macro-F1. Uses no test data."""
-    ok = fit_log[(fit_log["status"] == "ok") & (fit_log["family"] == "classifier")
-                 & (fit_log["horizon"] == horizon) & (fit_log["segment"] == "dev")]
+    ok = fit_log[(fit_log["status"] == "ok") & (fit_log["family"] == "classifier") & (fit_log["horizon"] == horizon)]
     if ok.empty:
         return None
     return str(ok.groupby("model")["val_macro_f1"].mean().idxmax())
@@ -103,7 +106,38 @@ def _same_rows(a: pd.DataFrame, b: pd.DataFrame) -> bool:
     return len(a) == len(b) and a[key].reset_index(drop=True).equals(b[key].reset_index(drop=True))
 
 
-def summarise(run: dict, prices: pd.DataFrame, cfg: dict) -> tuple[dict, pd.DataFrame, pd.DataFrame]:
+def _holm_in_place(group: list[dict]) -> list[dict]:
+    tested = [c for c in group if "p_value" in c]
+    for c, adjusted in zip(tested, holm([c["p_value"] for c in tested])):
+        c["p_holm"] = adjusted
+    return group
+
+
+def _comparison_plan(models: list[str], families: dict, reference: str | None) -> dict:
+    """Which pairs are compared. The plan is identical for classification and trading."""
+    plan = {"providers": {}}
+    for provider in PROVIDERS:
+        arms = [m for m in models if families.get(m) == provider]
+        if not arms:
+            continue
+        plan["providers"][provider] = {
+            "vs_reference": [(m, reference) for m in arms if reference],
+            "augmented_vs_gbt": [(arm_name(provider, "plus_controlled", v), "gbt") for v in VARIANTS],
+            "alone_vs_augmented": [(arm_name(provider, "signal", v), arm_name(provider, "plus_controlled", v))
+                                   for v in VARIANTS],
+        }
+    return plan
+
+
+def _segments(preds: pd.DataFrame) -> list[tuple[str, pd.DataFrame]]:
+    """With the holdout unlocked the verdict is on every fold pooled ("all"); parts are kept for robustness."""
+    names = sorted(preds["segment"].unique())
+    parts = [(name, preds[preds["segment"] == name]) for name in names]
+    return [("all", preds), *parts] if len(names) > 1 else parts
+
+
+def summarise(run: dict, prices: pd.DataFrame, cfg: dict,
+              risk_free: pd.Series | None = None) -> tuple[dict, pd.DataFrame, pd.DataFrame]:
     """Compute classification, statistical and trading results. Returns metrics, per-stock table, daily returns."""
     preds, fit_log = run["predictions"], run["fit_log"]
     preds = preds.sort_values(["model", "horizon", "date", "ticker"]).reset_index(drop=True)
@@ -111,17 +145,22 @@ def summarise(run: dict, prices: pd.DataFrame, cfg: dict) -> tuple[dict, pd.Data
     returns, market_returns = open_to_open_returns(prices, cfg["data"]["market_ticker"])
     families = fit_log.drop_duplicates("model").set_index("model")["family"].to_dict()
     stats_cfg, seed = cfg["stats"], int(cfg["seed"])
+    n_boot, alpha, capital = int(stats_cfg["n_boot"]), float(stats_cfg["alpha"]), float(cfg["backtest"]["starting_capital"])
 
     metrics: dict = {"segments": {}}
     per_stock_rows, daily_frames = [], []
-    for segment, seg_preds in preds.groupby("segment"):
+    for segment, seg_preds in _segments(preds):
         seg_out: dict = {}
         for h, h_preds in seg_preds.groupby("horizon"):
+            h = int(h)
             by_model = {m: g.reset_index(drop=True) for m, g in h_preds.groupby("model")}
             dates = pd.DatetimeIndex(sorted(h_preds["date"].unique()))
-            block = block_length(cfg, int(h))
-            reference = reference_classifier(fit_log, int(h))
+            block = block_length(cfg, h)
+            reference = reference_classifier(fit_log, h)
+            plan = _comparison_plan(list(by_model), families, reference)
+            traded = [m for m in by_model if families.get(m) in TRADED_FAMILIES]
 
+            # ---- classification (diagnostic)
             classification, confusions = {}, {}
             for name, sub in by_model.items():
                 result = evaluate_predictions(sub)
@@ -136,76 +175,80 @@ def summarise(run: dict, prices: pd.DataFrame, cfg: dict) -> tuple[dict, pd.Data
                 classification[name] = result
                 confusions[name] = per_date_confusions(sub, dates)
 
-            def compare(a: str, b: str) -> dict | None:
+            def compare_f1(a: str, b: str | None) -> dict | None:
                 if a not in by_model or b not in by_model or a == b:
                     return None
                 if not _same_rows(by_model[a], by_model[b]):
                     return {"a": a, "b": b, "skipped": "models were not evaluated on identical rows"}
-                out = paired_macro_f1_bootstrap(confusions[a], confusions[b], block, int(stats_cfg["n_boot"]),
-                                                seed + int(h), float(stats_cfg["alpha"]))
-                return {"a": a, "b": b, **out}
+                return {"a": a, "b": b, **paired_macro_f1_bootstrap(confusions[a], confusions[b], block, n_boot,
+                                                                    seed + h, alpha)}
 
-            def family_of(name: str) -> str:
-                return families.get(name, "")
+            comparisons = {
+                "skill_vs_stratified_random": _holm_in_place(
+                    [c for c in (compare_f1(m, "stratified_random") for m in traded) if c]),
+                "providers": {p: {k: _holm_in_place([c for c in (compare_f1(a, b) for a, b in pairs) if c])
+                                  for k, pairs in groups.items()}
+                              for p, groups in plan["providers"].items()},
+            }
 
-            skill = [c for c in (compare(m, "stratified_random") for m in by_model
-                                 if family_of(m) in ("classifier", "rule", "jev")) if c]
-            jev_vs_ref = [c for c in (compare(m, reference) for m in by_model
-                                      if family_of(m) == "jev" and reference) if c]
-            ablation = [c for c in (compare(f"jev_plus_controlled_{v}", "gbt") for v in ("zero", "examples")) if c]
-            for group in (skill, jev_vs_ref, ablation):
-                tested = [c for c in group if "p_value" in c]
-                for c, adjusted in zip(tested, holm([c["p_value"] for c in tested])):
-                    c["p_holm"] = adjusted
-
-            trading, daily_by_model = {}, {}
+            # ---- trading (primary)
             template = next(iter(by_model.values()))
-            always_buy = template[["date", "ticker"]].assign(pred=BUY)
-            for name, sub in {**by_model, "always_buy": always_buy}.items():
-                daily = run_backtest(sub[["date", "ticker", "pred"]], returns, int(h), cfg)
-                stats = trading_stats(daily, float(cfg["backtest"]["starting_capital"]))
-                stats["sharpe_cost_2bps"] = trading_stats(
-                    run_backtest(sub[["date", "ticker", "pred"]], returns, int(h), cfg, cost_bps=2.0), 1.0).get("sharpe")
-                stats["sharpe_cost_10bps"] = trading_stats(
-                    run_backtest(sub[["date", "ticker", "pred"]], returns, int(h), cfg, cost_bps=10.0), 1.0).get("sharpe")
-                stats["sharpe_long_short"] = trading_stats(
-                    run_backtest(sub[["date", "ticker", "pred"]], returns, int(h), cfg, mode="long_short"), 1.0).get("sharpe")
-                trading[name] = stats
-                daily_by_model[name] = daily
-                daily_frames.append(daily.reset_index().assign(model=name, horizon=h, segment=segment))
-            market = market_returns.reindex(daily_by_model["always_buy"].index).fillna(0.0)
-            trading["market_buy_and_hold"] = trading_stats(pd.DataFrame({
-                "net": market, "gross": market, "cost": 0.0, "turnover": 0.0, "exposure": 1.0,
-                "positions_opened": 0}), float(cfg["backtest"]["starting_capital"]))
+            hold_frame = template[["date", "ticker"]].assign(score=0.0)
+            hold = run_backtest(hold_frame, returns, h, cfg, rule="rank", mode="long_only", risk_free=risk_free,
+                                rank_fraction=1.0)
+            market = passive_daily(market_returns.reindex(hold.index), risk_free)
+            market_excess = market["excess"].to_numpy()
+            trading, trading_comparisons = {}, {}
+            for rule in RULES:
+                daily = {"always_buy": hold, "market_buy_and_hold": market}
+                stats = {"always_buy": trading_stats(hold, capital, market_excess),
+                         "market_buy_and_hold": trading_stats(market, capital, market_excess)}
+                for name, sub in by_model.items():
+                    frame = sub[["date", "ticker", "pred", "score"]]
+                    d = run_backtest(frame, returns, h, cfg, rule=rule, risk_free=risk_free)
+                    aligned = d.index.equals(hold.index)
+                    s = trading_stats(d, capital, market_excess if aligned else None)
+                    s["sharpe_cost_2bps"] = annualised_sharpe(with_cost(d, 2.0)["excess"].to_numpy())
+                    s["sharpe_cost_10bps"] = annualised_sharpe(with_cost(d, 10.0)["excess"].to_numpy())
+                    s["sharpe_long_short"] = annualised_sharpe(run_backtest(
+                        frame, returns, h, cfg, rule=rule, mode="long_short", risk_free=risk_free)["excess"].to_numpy())
+                    if aligned:
+                        ab = alpha_bootstrap(d["excess"].to_numpy(), market_excess, block, n_boot, seed + 13 * h, alpha)
+                        s["alpha_ci_low"], s["alpha_ci_high"] = ab["ci_low"], ab["ci_high"]
+                        # Same daily exposure spread over every stock: isolates stock selection from being invested.
+                        matched = d["exposure"] * hold["gross"] + (1 - d["exposure"]) * d["rf"]
+                        s["sharpe_exposure_matched"] = annualised_sharpe((matched - d["rf"]).to_numpy())
+                        s["selection_return_per_year"] = float((d["net"] - matched).mean() * 252)
+                    stats[name], daily[name] = s, d
+                    daily_frames.append(d.reset_index().assign(model=name, horizon=h, segment=segment, rule=rule))
+                if rule == RULES[0]:
+                    for name in ("always_buy", "market_buy_and_hold"):
+                        daily_frames.append(daily[name].reset_index().assign(
+                            model=name, horizon=h, segment=segment, rule="passive"))
 
-            def compare_sharpe(a: str, b: str) -> dict | None:
-                if a not in daily_by_model or b not in daily_by_model or a == b:
-                    return None
-                ra, rb = daily_by_model[a]["net"], daily_by_model[b]["net"]
-                if not ra.index.equals(rb.index):
-                    return {"a": a, "b": b, "skipped": "return series cover different dates"}
-                out = paired_sharpe_bootstrap(ra.to_numpy(), rb.to_numpy(), block, int(stats_cfg["n_boot"]),
-                                              seed + 7 * int(h), float(stats_cfg["alpha"]))
-                return {"a": a, "b": b, **out}
+                def compare_sharpe(a: str, b: str | None) -> dict | None:
+                    if a not in daily or b not in daily or a == b:
+                        return None
+                    if not daily[a].index.equals(daily[b].index):
+                        return {"a": a, "b": b, "skipped": "return series cover different dates"}
+                    return {"a": a, "b": b, **paired_sharpe_bootstrap(
+                        daily[a]["excess"].to_numpy(), daily[b]["excess"].to_numpy(), block, n_boot, seed + 7 * h, alpha)}
 
-            trading_vs_buy = [c for c in (compare_sharpe(m, "always_buy") for m in by_model
-                                          if family_of(m) in ("classifier", "rule", "jev")) if c]
-            trading_jev = [c for c in (compare_sharpe(m, reference) for m in by_model
-                                       if family_of(m) == "jev" and reference) if c]
-            for group in (trading_vs_buy, trading_jev):
-                tested = [c for c in group if "p_value" in c]
-                for c, adjusted in zip(tested, holm([c["p_value"] for c in tested])):
-                    c["p_holm"] = adjusted
+                trading[rule] = stats
+                trading_comparisons[rule] = {
+                    "vs_buy_and_hold": _holm_in_place(
+                        [c for c in (compare_sharpe(m, "always_buy") for m in traded) if c]),
+                    "providers": {p: {k: _holm_in_place([c for c in (compare_sharpe(a, b) for a, b in pairs) if c])
+                                      for k, pairs in groups.items()}
+                                  for p, groups in plan["providers"].items()},
+                }
 
-            seg_out[int(h)] = {
+            seg_out[h] = {
                 "n_dates": len(dates), "n_observations": int(len(template)), "block_length_days": block,
                 "first_date": str(dates[0].date()), "last_date": str(dates[-1].date()),
                 "reference_classifier": reference,
-                "classification": classification,
-                "comparisons": {"skill_vs_stratified_random": skill, "jev_vs_reference": jev_vs_ref,
-                                "jev_plus_controlled_vs_gbt": ablation},
-                "trading": trading,
-                "trading_comparisons": {"vs_always_buy": trading_vs_buy, "jev_vs_reference": trading_jev},
+                "classification": classification, "comparisons": comparisons,
+                "trading": trading, "trading_comparisons": trading_comparisons,
             }
         metrics["segments"][segment] = seg_out
 
@@ -218,6 +261,7 @@ def summarise(run: dict, prices: pd.DataFrame, cfg: dict) -> tuple[dict, pd.Data
     }
     metrics["not_run"] = (fit_log[fit_log["status"] != "ok"].groupby("model")["status"]
                           .agg(lambda s: s.iloc[0]).to_dict())
-    metrics["jev_status"] = run["jev_status"]
+    metrics["external_status"] = run["external_status"]
+    metrics["families"] = families
     daily_all = pd.concat(daily_frames, ignore_index=True) if daily_frames else pd.DataFrame()
     return metrics, pd.DataFrame(per_stock_rows), daily_all

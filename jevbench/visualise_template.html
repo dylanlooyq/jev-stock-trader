@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backtests</title>
+<style>
+  /* Layout: one column. Caution and takeaway first, three switches, four headline
+     figures, then growth, drawdown, the interval chart and the full table. */
+  :root {
+    color-scheme: light;
+    --page: #f3f2ee; --surface: #fcfcfb; --border: #e2e0da; --grid: #eae8e2; --axis: #b9b7ae;
+    --text: #0b0b0b; --text-2: #52514e; --muted: #6f6e69; --warn: #8a5200; --bad: #d03b3b;
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
+    --bench: #0b0b0b; --bench-2: #6f6e69; --extra: #b9b7ae; --pop: #ffffff; --shadow: 0 4px 16px rgba(0, 0, 0, .12);
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page: #121211; --surface: #1a1a19; --border: #2e2e2b; --grid: #2a2a28; --axis: #5a5955;
+      --text: #f0efec; --text-2: #c3c2b7; --muted: #9a998f; --warn: #fab219; --bad: #e66767;
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+      --bench: #f0efec; --bench-2: #9a998f; --extra: #5a5955; --pop: #242422; --shadow: 0 4px 16px rgba(0, 0, 0, .5);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.45; }
+  .page { max-width: 72rem; margin-inline: auto; padding-inline: clamp(16px, 4vw, 40px); padding-block: 32px 56px;
+    display: flex; flex-direction: column; gap: 24px; }
+  h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: clamp(1.7rem, 3.4vw, 2.3rem); line-height: 1.15; text-wrap: balance; }
+  h2 { margin: 0; font-size: 1.02rem; font-weight: 600; }
+  p { margin: 0; }
+  .head { display: flex; flex-direction: column; gap: 10px; }
+  .takeaway { max-width: 70ch; }
+  .caution { max-width: 78ch; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+    font-size: .87rem; color: var(--text-2); }
+  .flag { color: var(--warn); font-weight: 600; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 12px 28px; }
+  .control { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .control-label { color: var(--muted); font-size: .82rem; }
+  .seg { display: flex; flex-wrap: wrap; gap: 4px; }
+  .btn { font: inherit; font-size: .84rem; padding: 5px 11px; cursor: pointer; border: 1px solid var(--border);
+    border-radius: 7px; background: var(--surface); color: var(--text); }
+  .btn[aria-pressed="true"] { background: var(--text); color: var(--page); border-color: var(--text); }
+  .btn:focus-visible, .key:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 14px; }
+  .tile, .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px;
+    display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .tile-label, .tile-sub, .note { color: var(--muted); font-size: .82rem; }
+  .tile-value { font-family: var(--serif); font-size: 2rem; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .card { gap: 10px; }
+  .note { max-width: 78ch; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+  .key { font: inherit; font-size: .8rem; color: var(--text-2); background: none; border: 1px solid transparent; border-radius: 6px;
+    padding: 3px 7px; display: inline-flex; align-items: center; gap: 7px; cursor: pointer; white-space: nowrap; }
+  .key:hover { border-color: var(--border); }
+  .key[aria-pressed="false"] { opacity: .4; text-decoration: line-through; }
+  .swatch { display: inline-block; width: 16px; height: 0; border-top: 2px solid var(--text); flex: none; }
+
+  .chart { position: relative; min-height: 320px; }
+  .chart svg { display: block; width: 100%; height: auto; }
+  .tick { fill: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  .rowlabel { fill: var(--text); font-size: 12.5px; }
+  .rowvalue { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .tip { position: absolute; top: 0; left: 0; z-index: 2; pointer-events: none; white-space: nowrap; background: var(--pop);
+    border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow); padding: 7px 10px; font-size: .8rem;
+    font-variant-numeric: tabular-nums; }
+  .tip-head { color: var(--text-2); margin-bottom: 2px; }
+  .tip-row { display: flex; align-items: center; gap: 7px; }
+  .tip-val { margin-left: auto; padding-left: 16px; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .84rem; font-variant-numeric: tabular-nums; }
+  th, td { padding: 7px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; white-space: normal; vertical-align: bottom; line-height: 1.25; }
+  th.left, td.left { text-align: left; }
+  .name { display: inline-flex; align-items: center; gap: 8px; }
+  tr.bench td { font-weight: 600; }
+  .foot { color: var(--muted); font-size: .8rem; max-width: 78ch; }
+</style>
+</head>
+<body>
+<main class="page">
+  <header class="head">
+    <h1 id="title">Backtests</h1>
+    <p class="takeaway" id="takeaway"></p>
+    <p class="caution" id="caution"></p>
+  </header>
+
+  <div class="controls" id="controls"></div>
+
+  <section class="tiles" id="tiles"></section>
+
+  <section class="card">
+    <h2>Growth of $1, net of costs</h2>
+    <p class="note" id="growth-note"></p>
+    <div class="legend" id="legend"></div>
+    <div class="chart" id="growth"></div>
+  </section>
+
+  <section class="card">
+    <h2>Drawdown</h2>
+    <p class="note">How far each strategy sits below its own previous peak.</p>
+    <div class="chart" id="drawdown"></div>
+  </section>
+
+  <section class="card">
+    <h2>Sharpe ratio against equal-weight buy and hold</h2>
+    <p class="note">Each strategy's net Sharpe ratio minus buy and hold, with a 95% bootstrap interval. Right of zero is better. An interval that crosses zero means the difference could be chance.</p>
+    <div class="chart" id="forest" style="min-height: 240px"></div>
+  </section>
+
+  <section class="card">
+    <h2>All strategies</h2>
+    <p class="note">Sorted by net Sharpe ratio. Alpha and beta are measured against the market index. The last column repeats the backtest at a cost of 10 basis points per trade.</p>
+    <div class="table-wrap"><table id="table"></table></div>
+  </section>
+
+  <p class="foot" id="foot"></p>
+</main>
+
+<script>
+(() => {
+  const DATA = /*__DATA__*/null;
+  const NS = 'http://www.w3.org/2000/svg';
+  const $ = (id) => document.getElementById(id);
+  const state = { segment: DATA.defaults.segment, rule: DATA.defaults.rule, horizon: DATA.defaults.horizon, hidden: new Set() };
+
+  const SEGMENTS = { all: 'All folds', dev: 'Before the final two years', holdout: 'Final two years' };
+  const RULES = { rank: `Top ${DATA.run.rank_pct}% by score`, buy_names: 'BUY names only' };
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const el = (tag, cls, text) => {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text != null) node.textContent = text;
+    return node;
+  };
+  const svgEl = (tag, attrs, parent) => {
+    const node = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs || {})) if (v != null) node.setAttribute(k, v);
+    if (parent) parent.appendChild(node);
+    return node;
+  };
+  const fixed = (v, d) => { const s = v.toFixed(d); return Number(s) === 0 ? (0).toFixed(d) : s; };
+  const num = (v, d = 2) => (v == null ? 'n/a' : fixed(v, d));
+  const pct = (v, d = 1) => (v == null ? 'n/a' : fixed(v * 100, d) + '%');
+  const signed = (v) => { const s = fixed(v, 2); return Number(s) > 0 ? '+' + s : s; };
+  const time = (d) => Date.parse(d + 'T00:00:00Z');
+  const longDate = (d) => { const [y, m, day] = d.split('-').map(Number); return `${MONTHS[m - 1]} ${day}, ${y}`; };
+
+  // Colour follows the strategy, never its rank or the current filter: slots are fixed
+  // by first appearance across every view. Past eight slots a strategy is drawn in grey.
+  const slots = new Map();
+  Object.values(DATA.views).forEach((v) => v.strategies.forEach((s) => {
+    if (s.kind !== 'Benchmark' && s.chart && !slots.has(s.id)) slots.set(s.id, slots.size);
+  }));
+  function styleOf(s) {
+    if (s.id === 'always_buy') return { color: 'var(--bench)', width: 2.5, dash: null };
+    if (s.kind === 'Benchmark') return { color: 'var(--bench-2)', width: 2, dash: '5 4' };
+    const slot = slots.get(s.id);
+    return { color: slot != null && slot < 8 ? `var(--s${slot + 1})` : 'var(--extra)', width: 2, dash: null };
+  }
+  function swatch(st) {
+    const s = el('span', 'swatch');
+    s.style.borderTopColor = st.color;
+    s.style.borderTopWidth = st.width + 'px';
+    if (st.dash) s.style.borderTopStyle = 'dashed';
+    return s;
+  }
+
+  const view = () => DATA.views[`${state.segment}|${state.rule}|${state.horizon}`];
+
+  function niceTicks(lo, hi, count) {
+    const span = hi - lo || Math.abs(hi) || 1;
+    const raw = span / Math.max(1, count);
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const norm = raw / mag;
+    const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+    const start = Math.floor(lo / step) * step, end = Math.ceil(hi / step) * step;
+    const ticks = [];
+    for (let v = start; v <= end + step / 2; v += step) ticks.push(Number(v.toFixed(10)));
+    return ticks;
+  }
+
+  function measure(svg, cls, texts) {
+    const probe = svgEl('text', { class: cls }, svg);
+    let widest = 0;
+    texts.forEach((t) => { probe.textContent = t; widest = Math.max(widest, probe.getComputedTextLength()); });
+    probe.remove();
+    return Math.ceil(widest);
+  }
+
+  function placeTip(tip, box, x, y) {
+    const w = tip.offsetWidth, W = box.clientWidth;
+    let left = x + 14;
+    if (left + w > W) left = x - 14 - w;
+    tip.style.left = Math.max(0, left) + 'px';
+    tip.style.top = Math.max(0, y) + 'px';
+  }
+
+  function dateTicks(dates, times, x, width) {
+    const room = Math.max(2, Math.floor(width / 96));
+    const firsts = [];
+    dates.forEach((d, i) => { if (i === 0 || d.slice(0, 7) !== dates[i - 1].slice(0, 7)) firsts.push(i); });
+    const years = (times[times.length - 1] - times[0]) / (365.25 * 864e5);
+    let picks = firsts.slice(1);   // the first month is usually partial
+    if (years > 3) picks = picks.filter((i) => dates[i].slice(5, 7) === '01');
+    const every = Math.max(1, Math.ceil(picks.length / room));
+    return picks.filter((_, k) => k % every === 0).map((i) => ({
+      x: x(times[i]),
+      label: years > 3 ? dates[i].slice(0, 4) : `${MONTHS[Number(dates[i].slice(5, 7)) - 1]} ${dates[i].slice(0, 4)}`,
+    }));
+  }
+
+  function drawLines(box, field, opt) {
+    const v = view();
+    const shown = v.strategies.filter((s) => s.chart && !state.hidden.has(s.id))
+      .map((s) => ({ ...s, style: styleOf(s), values: v[field][s.id] }))
+      .sort((a, b) => Number(a.kind === 'Benchmark') - Number(b.kind === 'Benchmark'));   // benchmarks on top
+    const W = box.clientWidth, H = 320;
+    box.replaceChildren();
+    if (!W || !shown.length || !v.dates.length) return;
+    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': opt.label }, box);
+    const times = v.dates.map(time);
+    const all = shown.flatMap((s) => s.values);
+    const ticks = niceTicks(Math.min(opt.base, ...all), Math.max(opt.base, ...all), 5);
+    const lo = ticks[0], hi = ticks[ticks.length - 1];
+    const m = { l: measure(svg, 'tick', ticks.map(opt.fmt)) + 10, r: 14, t: 10, b: 28 };
+    const x = (t) => m.l + ((t - times[0]) / (times[times.length - 1] - times[0] || 1)) * (W - m.l - m.r);
+    const y = (val) => H - m.b - ((val - lo) / (hi - lo || 1)) * (H - m.t - m.b);
+
+    ticks.forEach((t) => {
+      svgEl('line', { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), 'stroke-width': 1,
+        style: `stroke: var(${t === opt.base ? '--axis' : '--grid'})` }, svg);
+      svgEl('text', { class: 'tick', x: m.l - 8, y: y(t), dy: '0.32em', 'text-anchor': 'end' }, svg).textContent = opt.fmt(t);
+    });
+    dateTicks(v.dates, times, x, W - m.l - m.r).forEach((t) => {
+      svgEl('text', { class: 'tick', x: t.x, y: H - 8, 'text-anchor': 'middle' }, svg).textContent = t.label;
+    });
+    shown.forEach((s) => {
+      const d = s.values.map((val, i) => `${i ? 'L' : 'M'}${x(times[i]).toFixed(1)},${y(val).toFixed(1)}`).join('');
+      svgEl('path', { d, fill: 'none', 'stroke-width': s.style.width, 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+        'stroke-dasharray': s.style.dash, style: `stroke: ${s.style.color}` }, svg);
+    });
+
+    const rule = svgEl('line', { y1: m.t, y2: H - m.b, 'stroke-width': 1, style: 'stroke: var(--axis); display: none' }, svg);
+    const dots = shown.map((s) => svgEl('circle', { r: 4, 'stroke-width': 2,
+      style: `fill: ${s.style.color}; stroke: var(--surface); display: none` }, svg));
+    const tip = el('div', 'tip');
+    tip.hidden = true;
+    box.appendChild(tip);
+    const hit = svgEl('rect', { x: m.l, y: m.t, width: Math.max(0, W - m.l - m.r), height: H - m.t - m.b, fill: 'transparent' }, svg);
+    hit.addEventListener('pointermove', (event) => {
+      const r = svg.getBoundingClientRect();
+      const px = (event.clientX - r.left) * (W / r.width);
+      const target = times[0] + ((px - m.l) / (W - m.l - m.r)) * (times[times.length - 1] - times[0]);
+      let a = 0, b = times.length - 1;
+      while (b - a > 1) { const mid = (a + b) >> 1; if (times[mid] < target) a = mid; else b = mid; }
+      const i = Math.abs(times[a] - target) <= Math.abs(times[b] - target) ? a : b;
+      const cx = x(times[i]);
+      rule.setAttribute('x1', cx); rule.setAttribute('x2', cx); rule.style.display = '';
+      dots.forEach((dot, k) => { dot.setAttribute('cx', cx); dot.setAttribute('cy', y(shown[k].values[i])); dot.style.display = ''; });
+      tip.replaceChildren(el('div', 'tip-head', longDate(v.dates[i])));
+      shown.slice().sort((p, q) => q.values[i] - p.values[i]).forEach((s) => {
+        const row = el('div', 'tip-row');
+        row.append(swatch(s.style), el('span', null, s.label), el('span', 'tip-val', opt.tip(s.values[i])));
+        tip.appendChild(row);
+      });
+      tip.hidden = false;
+      placeTip(tip, box, cx * (r.width / W), m.t);
+    });
+    hit.addEventListener('pointerleave', () => {
+      rule.style.display = 'none'; dots.forEach((dot) => { dot.style.display = 'none'; }); tip.hidden = true;
+    });
+  }
+
+  function drawForest(box) {
+    const v = view();
+    const byId = new Map(v.strategies.map((s) => [s.id, s]));
+    const rows = v.diffs.filter((r) => byId.has(r.id)).slice().sort((a, b) => b.diff - a.diff);
+    const W = box.clientWidth;
+    box.replaceChildren();
+    if (!W || !rows.length) { box.appendChild(el('p', 'note', 'No strategy comparisons in this view.')); return; }
+    const rowH = 42, top = 6, bottom = 30, H = top + rows.length * rowH + bottom;
+    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img',
+      'aria-label': 'Sharpe ratio difference against equal-weight buy and hold, with intervals' }, box);
+    const ticks = niceTicks(Math.min(0, ...rows.map((r) => r.lo)), Math.max(0, ...rows.map((r) => r.hi)), Math.max(3, Math.floor(W / 130)));
+    const lo = ticks[0], hi = ticks[ticks.length - 1];
+    const x = (val) => 10 + ((val - lo) / (hi - lo || 1)) * (W - 20);
+    ticks.forEach((t, i) => {
+      svgEl('line', { x1: x(t), x2: x(t), y1: top, y2: H - bottom, 'stroke-width': 1,
+        style: `stroke: var(${t === 0 ? '--axis' : '--grid'})` }, svg);
+      svgEl('text', { class: 'tick', x: x(t), y: H - 10,
+        'text-anchor': i === 0 ? 'start' : i === ticks.length - 1 ? 'end' : 'middle' }, svg).textContent = signed(t);
+    });
+    const tip = el('div', 'tip');
+    tip.hidden = true;
+    rows.forEach((r, i) => {
+      const s = byId.get(r.id), st = styleOf(s);
+      const g = svgEl('g', { transform: `translate(0, ${top + i * rowH})` }, svg);
+      // A surface-coloured outline keeps each label clear of the gridlines behind it.
+      const plate = { 'paint-order': 'stroke', 'stroke-width': 4, style: 'stroke: var(--surface)' };
+      svgEl('text', { class: 'rowlabel', x: 10, y: 14, ...plate }, g).textContent = s.label;
+      svgEl('text', { class: 'rowvalue', x: W - 10, y: 14, 'text-anchor': 'end', ...plate }, g)
+        .textContent = `${signed(r.diff)}  (${signed(r.lo)} to ${signed(r.hi)})`;
+      svgEl('line', { x1: x(r.lo), x2: x(r.hi), y1: 29, y2: 29, 'stroke-width': 2, 'stroke-linecap': 'round',
+        style: `stroke: ${st.color}` }, g);
+      svgEl('circle', { cx: x(r.diff), cy: 29, r: 5, 'stroke-width': 2, style: `fill: ${st.color}; stroke: var(--surface)` }, g);
+      const hit = svgEl('rect', { x: 0, y: 0, width: W, height: rowH, fill: 'transparent' }, g);
+      hit.addEventListener('pointermove', (event) => {
+        tip.replaceChildren(el('div', 'tip-head', s.label));
+        [['Sharpe difference', signed(r.diff)], ['95% interval', `${signed(r.lo)} to ${signed(r.hi)}`],
+          ['p-value (adjusted)', num(r.p, 2)]].forEach(([k, val]) => {
+          const row = el('div', 'tip-row');
+          row.append(el('span', null, k), el('span', 'tip-val', val));
+          tip.appendChild(row);
+        });
+        tip.hidden = false;
+        const b = box.getBoundingClientRect();
+        placeTip(tip, box, event.clientX - b.left, event.clientY - b.top + 14);
+      });
+      hit.addEventListener('pointerleave', () => { tip.hidden = true; });
+    });
+    box.appendChild(tip);
+  }
+
+  function drawLegend() {
+    const v = view();
+    $('legend').replaceChildren(...v.strategies.filter((s) => s.chart).map((s) => {
+      const key = el('button', 'key');
+      key.type = 'button';
+      key.title = 'Show or hide this line';
+      key.setAttribute('aria-pressed', String(!state.hidden.has(s.id)));
+      key.append(swatch(styleOf(s)), el('span', null, s.label));
+      key.addEventListener('click', () => {
+        if (state.hidden.has(s.id)) state.hidden.delete(s.id); else state.hidden.add(s.id);
+        render();
+      });
+      return key;
+    }));
+  }
+
+  function drawTable() {
+    const v = view();
+    const cols = [['Strategy', 'left'], ['Type', 'left'], ['Net return'], ['Per year'], ['Sharpe'], ['Worst drawdown'],
+      ['Turnover per year'], ['Invested'], ['Alpha per year'], ['Beta'], ['Sharpe at 10 bps']];
+    const head = el('tr');
+    cols.forEach(([label, cls]) => head.appendChild(el('th', cls, label)));
+    const thead = el('thead'); thead.appendChild(head);
+    const tbody = el('tbody');
+    v.strategies.slice().sort((a, b) => (v.stats[b.id].sharpe ?? -9) - (v.stats[a.id].sharpe ?? -9)).forEach((s) => {
+      const t = v.stats[s.id];
+      const tr = el('tr', s.kind === 'Benchmark' ? 'bench' : null);
+      const nameCell = el('td', 'left'), name = el('span', 'name');
+      name.append(swatch(styleOf(s)), el('span', null, s.label));
+      nameCell.appendChild(name);
+      tr.append(nameCell, el('td', 'left', s.kind), el('td', null, pct(t.cumulative_net_return)), el('td', null, pct(t.cagr)),
+        el('td', null, num(t.sharpe)), el('td', null, pct(t.max_drawdown)), el('td', null, num(t.annual_turnover, 1)),
+        el('td', null, pct(t.mean_exposure, 0)), el('td', null, pct(t.alpha)), el('td', null, num(t.beta)),
+        el('td', null, num(t.sharpe_cost_10bps)));
+      tbody.appendChild(tr);
+    });
+    $('table').replaceChildren(thead, tbody);
+  }
+
+  function drawControls() {
+    const groups = [
+      ['Period', 'segment', DATA.segments.map((s) => [s, SEGMENTS[s] || s])],
+      ['Portfolio rule', 'rule', DATA.rules.map((r) => [r, RULES[r] || r])],
+      ['Holding period', 'horizon', DATA.horizons.map((h) => [h, h === 1 ? '1 day' : `${h} days`])],
+    ].filter(([, , options]) => options.length > 1);
+    $('controls').replaceChildren(...groups.map(([label, key, options]) => {
+      const wrap = el('div', 'control');
+      const seg = el('div', 'seg');
+      seg.setAttribute('role', 'group');
+      seg.setAttribute('aria-label', label);
+      options.forEach(([value, text]) => {
+        const b = el('button', 'btn', text);
+        b.type = 'button';
+        b.setAttribute('aria-pressed', String(state[key] === value));
+        b.addEventListener('click', () => { state[key] = value; render(); });
+        seg.appendChild(b);
+      });
+      wrap.append(el('span', 'control-label', label), seg);
+      return wrap;
+    }));
+  }
+
+  function drawText() {
+    const v = view(), run = DATA.run;
+    const tested = v.diffs.map((d) => d.id);
+    const reliable = v.diffs.filter((d) => d.lo > 0 || d.hi < 0).length;
+    $('title').textContent = `Backtests: ${run.name}`;
+    document.title = `Backtests: ${run.name}`;
+
+    const take = $('takeaway');
+    take.replaceChildren();
+    take.append(`${reliable} of ${tested.length} strategies have a net Sharpe ratio reliably different from equal-weight buy and hold in this view.`);
+    if (v.power) {
+      take.append(` The 95% interval on a Sharpe difference is typically ±${num(v.power.half_width)} here, so a true difference smaller than about ${num(v.power.mde_80)} would usually be missed.`);
+    }
+
+    const caution = $('caution');
+    caution.replaceChildren();
+    if (run.smoke) caution.appendChild(el('span', 'flag', 'Pipeline check, not a finding. '));
+    else if (!run.full_window) caution.appendChild(el('span', 'flag', 'Partial window, not the verdict run. '));
+    caution.append(`${run.stocks} stocks, ${run.folds} walk-forward folds, ${v.first_date} to ${v.last_date}. Trading cost ${run.cost_bps} basis points per trade. `);
+    caution.append(run.external_ran.length
+      ? `External classifiers included: ${run.external_ran.join(', ')}.`
+      : 'Jev has not been run, so no Jev strategy appears here.');
+    if (v.thinned > 1) caution.append(` Lines show every ${v.thinned}th trading day; all statistics use every day.`);
+
+    $('growth-note').textContent = state.rule === 'rank'
+      ? `Each strategy holds the top ${run.rank_pct}% of stocks by its own score, equally weighted and fully invested. It differs from buy and hold only in which stocks it holds.`
+      : `Each strategy holds only the stocks its model labels BUY and keeps the rest in cash${run.risk_free === 'tbill' ? ' earning the Treasury bill rate' : ''}, so it is partly invested. Both buy-and-hold lines are fully invested.`;
+
+    const best = tested.slice().sort((a, b) => (v.stats[b].sharpe ?? -9) - (v.stats[a].sharpe ?? -9))[0];
+    const label = (id) => (v.strategies.find((s) => s.id === id) || {}).label || id;
+    const invested = tested.length ? tested.reduce((sum, id) => sum + (v.stats[id].mean_exposure || 0), 0) / tested.length : null;
+    const tiles = [
+      ['Highest net Sharpe ratio among strategies', best ? num(v.stats[best].sharpe) : 'n/a', best ? label(best) : ''],
+      ['Equal-weight buy and hold', num((v.stats.always_buy || {}).sharpe), 'Net Sharpe ratio, same stocks and costs'],
+      [`${run.market} buy and hold`, num((v.stats.market_buy_and_hold || {}).sharpe), 'Sharpe ratio, shown for context'],
+      ['Average share invested, strategies', pct(invested, 0), 'Buy and hold is fully invested'],
+    ];
+    $('tiles').replaceChildren(...tiles.map(([a, b, c]) => {
+      const tile = el('div', 'tile');
+      tile.append(el('p', 'tile-label', a), el('p', 'tile-value', b), el('p', 'tile-sub', c));
+      return tile;
+    }));
+
+    const status = Object.entries(run.external).map(([k, s]) => `${k}: ${s}`).join('; ');
+    $('foot').textContent = `Generated from run ${run.name} (commit ${run.commit}, ${run.generated}). Sharpe ratios use returns in excess of ${run.risk_free === 'tbill' ? 'the Treasury bill rate' : 'zero'}. External classifier status: ${status || 'none registered'}.`;
+  }
+
+  function render() {
+    drawControls();
+    drawText();
+    drawLegend();
+    drawLines($('growth'), 'growth', {
+      base: 1, label: 'Growth of one dollar by strategy', fmt: (t) => '$' + fixed(t, 2), tip: (t) => '$' + fixed(t, 3),
+    });
+    drawLines($('drawdown'), 'drawdown', {
+      base: 0, label: 'Drawdown by strategy', fmt: (t) => fixed(t, 0) + '%', tip: (t) => fixed(t, 1) + '%',
+    });
+    drawForest($('forest'));
+    drawTable();
+  }
+
+  let pending = 0;
+  window.addEventListener('resize', () => { cancelAnimationFrame(pending); pending = requestAnimationFrame(render); });
+  render();
+})();
+</script>
+</body>
+</html>

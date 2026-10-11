@@ -31,6 +31,12 @@ class RuleModel(Model):
     def predict(self, df):
         return self.signal(df, self.params_), None
 
+    def strength(self, df, params) -> np.ndarray:
+        raise NotImplementedError
+
+    def rank_score(self, df, pred, proba):
+        return self.strength(df, self.params_)
+
 
 class MomentumRule(RuleModel):
     """BUY after a strong trailing return, SELL after a weak one.
@@ -39,10 +45,12 @@ class MomentumRule(RuleModel):
     dead zone, in volatility units, inside which the rule says HOLD.
     """
 
-    def signal(self, df, params):
+    def strength(self, df, params):
         lookback = int(params["lookback"])
-        z = df[f"ret_{lookback}"].to_numpy() / (df["vol_60"].to_numpy() * np.sqrt(lookback))
-        band = float(params["band"])
+        return df[f"ret_{lookback}"].to_numpy() / (df["vol_60"].to_numpy() * np.sqrt(lookback))
+
+    def signal(self, df, params):
+        z, band = self.strength(df, params), float(params["band"])
         return np.where(z > band, BUY, np.where(z < -band, SELL, HOLD))
 
 
@@ -53,6 +61,10 @@ class MovingAverageCrossRule(RuleModel):
     dist_sma_slow > dist_sma_fast. With `confirm`, price must also be on the same
     side of the fast average, otherwise the rule says HOLD.
     """
+
+    def strength(self, df, params):
+        """Gap between the fast and slow averages: positive when the fast one is higher."""
+        return (df[f"dist_sma_{int(params['slow'])}"] - df[f"dist_sma_{int(params['fast'])}"]).to_numpy()
 
     def signal(self, df, params):
         fast = df[f"dist_sma_{int(params['fast'])}"].to_numpy()

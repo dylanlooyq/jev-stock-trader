@@ -45,6 +45,10 @@ def validate_config(cfg: dict) -> None:
         raise ValueError("jev.model must be a pinned version id, not an alias")
     if cfg["backtest"]["mode"] not in ("long_only", "long_short"):
         raise ValueError("backtest.mode must be long_only or long_short")
+    if cfg["backtest"]["primary_rule"] not in ("rank", "buy_names"):
+        raise ValueError("backtest.primary_rule must be rank or buy_names")
+    if cfg["backtest"]["risk_free"] not in ("tbill", "zero"):
+        raise ValueError("backtest.risk_free must be tbill or zero")
     if len(set(cfg["data"]["tickers"])) != len(cfg["data"]["tickers"]):
         raise ValueError("data.tickers contains duplicates")
     if splits["first_test_start"] >= splits["holdout_start"]:

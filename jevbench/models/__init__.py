@@ -4,7 +4,7 @@ from __future__ import annotations
 from ..features import FEATURES
 from .base import Model
 from .classical import GradientBoostedTrees, LogReg, MajorityClass, RandomForest, StratifiedRandom
-from .jev_arms import make_jev_models
+from .jev_arms import make_external_models
 from .rules import MomentumRule, MovingAverageCrossRule
 
 
@@ -18,7 +18,7 @@ def make_models(cfg: dict) -> list[Model]:
         "gbt": lambda: GradientBoostedTrees("gbt", m["gbt"], FEATURES, n_jobs),
         "momentum_rule": lambda: MomentumRule("momentum_rule", m["momentum_rule"]),
         "ma_cross_rule": lambda: MovingAverageCrossRule("ma_cross_rule", m["ma_cross_rule"]),
-        **make_jev_models(cfg),
+        **make_external_models(cfg),
     }
     unknown = [name for name in m["enabled"] if name not in factories]
     if unknown:

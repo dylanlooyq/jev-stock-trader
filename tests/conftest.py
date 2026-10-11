@@ -52,6 +52,7 @@ TEST_OVERRIDES = {
             {"num_leaves": 7, "learning_rate": 0.1, "n_estimators": 20, "class_weight": "balanced"}]},
     },
     "jev": {"max_workers": 2, "bucket_lookback_days": 200, "example_lookback_days": 120},
+    "backtest": {"risk_free": "zero"},
     "stats": {"n_boot": 200},
 }
 

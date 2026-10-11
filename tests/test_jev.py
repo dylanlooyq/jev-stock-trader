@@ -12,7 +12,7 @@ from jevbench.config import deep_update
 from jevbench.data import lock_holdout
 from jevbench.dataset import build_dataset
 from jevbench.features import FEATURES
-from jevbench.models.jev_arms import JevSignal
+from jevbench.models.jev_arms import ExternalSignal
 
 from .conftest import TICKERS
 
@@ -232,7 +232,8 @@ def test_annotate_then_benchmark_runs_the_jev_arms(cfg, prices):
     ran = set(run["predictions"]["model"])
     assert {"jev_signal_zero", "jev_head_zero", "jev_plus_controlled_zero"} <= ran
     assert not any(m.endswith("_examples") for m in ran)             # that variant was never annotated
-    assert run["jev_status"]["examples"].startswith("not run")
+    assert run["external_status"]["jev/examples"].startswith("not run")
+    assert run["external_status"]["openai/zero"].startswith("not run")
     for _, grp in run["predictions"].groupby("horizon"):
         sizes = grp.groupby("model").size()
         assert sizes.nunique() == 1                                   # identical rows for Jev and baselines
@@ -242,8 +243,8 @@ def test_failed_jev_rows_become_no_prediction(cfg, prices):
     table, manifest, _ = _annotate(cfg, prices, "zero", mock_transport(status=400))
     assert manifest["rows_ok"] == 0 and manifest["rows_failed"] == len(table)
     assert table["jevz_status"].str.startswith("error").all()
-    ds, status = jev.attach_jev_outputs(build_dataset(lock_holdout(prices, cfg), cfg), cfg)
-    model = JevSignal("jev_signal_zero", "zero")
+    ds, status = jev.attach_outputs(build_dataset(lock_holdout(prices, cfg), cfg), cfg)
+    model = ExternalSignal("jev_signal_zero", "jev", "zero")
     model.horizon_ = 5
     pred, proba = model.predict(ds.head(50))
     assert (pred == NO_PREDICTION).all() and np.isnan(proba).all()
@@ -253,8 +254,8 @@ def test_outputs_from_a_different_configuration_are_refused(cfg, prices):
     _annotate(cfg, prices, "zero", mock_transport())
     ds = build_dataset(lock_holdout(prices, cfg), cfg)
     for changed in ({"task": {"label": {"k": 0.75}}}, {"jev": {"examples_per_class": 2}}):
-        merged, status = jev.attach_jev_outputs(ds, deep_update(cfg, changed))
-        assert status["zero"].startswith("refused")
+        merged, status = jev.attach_outputs(ds, deep_update(cfg, changed))
+        assert status["jev/zero"].startswith("refused")
         assert "jevz_status" not in merged.columns
 
 
@@ -266,3 +267,33 @@ def test_partially_annotated_data_does_not_run_as_if_complete(cfg, prices):
     assert not run["predictions"]["model"].str.startswith("jev").any()
     reasons = run["fit_log"].loc[run["fit_log"]["family"] == "jev", "status"]
     assert reasons.str.contains("cover only").any()
+
+
+def test_reserved_providers_are_wired_but_never_run_without_outputs(cfg, prices):
+    """OpenAI and local-model arms can be enabled today; with no saved outputs they report 'not run'."""
+    from jevbench.providers import PROVIDERS, describe_arm
+
+    assert {"jev", "openai", "local"} <= set(PROVIDERS)
+    prefixes = [p for spec in PROVIDERS.values() for p in spec["prefix"].values()]
+    assert len(prefixes) == len(set(prefixes))                     # no two providers share output columns
+    assert "OpenAI" in describe_arm("openai_plus_controlled_examples")
+
+    enabled = cfg["models"]["enabled"] + ["openai_signal_zero", "openai_plus_controlled_zero", "local_head_examples"]
+    run = walk_forward(prices, deep_update(cfg, {"models": {"enabled": enabled}}), log=lambda *_: None)
+    log = run["fit_log"]
+    assert set(log.loc[log["family"].isin(["openai", "local"]), "status"]) == {"not run: no saved outputs"}
+    assert not run["predictions"]["model"].str.startswith(("openai", "local")).any()
+
+
+def test_signal_arm_ranks_by_buy_minus_sell(cfg, prices):
+    _annotate(cfg, prices, "zero", mock_transport())
+    ds, _ = jev.attach_outputs(build_dataset(lock_holdout(prices, cfg), cfg), cfg)
+    model = ExternalSignal("jev_signal_zero", "jev", "zero")
+    model.horizon_ = 5
+    sample = ds.head(20).copy()
+    sample.loc[sample.index[0], ["jevz_p_sell_5", "jevz_p_hold_5", "jevz_p_buy_5"]] = [0.1, 0.2, 0.7]
+    sample.loc[sample.index[1], ["jevz_p_sell_5", "jevz_p_hold_5", "jevz_p_buy_5"]] = [np.nan] * 3
+    pred, proba = model.predict(sample)
+    score = model.rank_score(sample, pred, proba)
+    assert score[0] == pytest.approx(0.6)
+    assert np.isnan(score[1]) and pred[1] == NO_PREDICTION        # a failed answer is never held

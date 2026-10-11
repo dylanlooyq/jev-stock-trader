@@ -1,12 +1,13 @@
 """Command-line entry point.  Usage: python -m jevbench.run <command> [options]
 
-  download       Download and freeze the price dataset.
+  download       Download and freeze the price dataset and the risk-free rate.
   quality        Print data-quality checks for the frozen dataset.
   benchmark      Run the walk-forward benchmark and write a report.
   sensitivity    Run every predefined sensitivity variant as its own logged run.
   jev-estimate   Estimate Jev request count, tokens and cost. Sends nothing.
   jev-annotate   Query Jev and save its outputs. Billed; needs an approved budget.
   report         Re-render the report of an existing run.
+  visualise      Write a self-contained HTML page of a run's backtests.
 """
 from __future__ import annotations
 
@@ -25,7 +26,8 @@ import yaml
 
 from .benchmark import summarise, walk_forward
 from .config import REPO_ROOT, config_hash, deep_update, load_config
-from .data import download_prices, load_manifest, load_prices, lock_holdout, quality_report
+from .data import (cache_paths, download_prices, download_risk_free, load_manifest, load_prices, load_risk_free,
+                   lock_holdout, quality_report, risk_free_paths)
 from .dataset import build_dataset
 from .report import render_report
 
@@ -64,8 +66,13 @@ def _clean(obj):
 
 
 def run_benchmark(cfg: dict, run_name: str, unlock_holdout: bool = False, prices: pd.DataFrame | None = None,
-                  results_dir: Path | None = None, dataset_manifest: dict | None = None) -> dict:
-    """Run one benchmark end to end and write predictions, metrics, manifest and report."""
+                  results_dir: Path | None = None, dataset_manifest: dict | None = None,
+                  risk_free: pd.Series | None = None) -> dict:
+    """Run one benchmark end to end and write predictions, metrics, manifest and report.
+
+    When `prices` is passed in (tests), `risk_free` is used as given; otherwise both are
+    loaded from the frozen files named by the configuration.
+    """
     results_dir = results_dir or RESULTS_DIR
     out_dir = results_dir / run_name
     if out_dir.exists():
@@ -74,12 +81,13 @@ def run_benchmark(cfg: dict, run_name: str, unlock_holdout: bool = False, prices
     if prices is None:
         prices = load_prices(cfg, unlock_holdout=unlock_holdout)
         dataset_manifest = load_manifest(cfg)
+        risk_free = load_risk_free(cfg)
     if not unlock_holdout:
         prices = lock_holdout(prices, cfg)
 
     print(f"Run {run_name}: {prices['ticker'].nunique() - 1} stocks, holdout unlocked: {unlock_holdout}")
     run = walk_forward(prices, cfg, unlock_holdout=unlock_holdout)
-    metrics, per_stock, daily = summarise(run, prices, cfg)
+    metrics, per_stock, daily = summarise(run, prices, cfg, risk_free)
     metrics = _clean(metrics)
 
     manifest = {
@@ -90,7 +98,9 @@ def run_benchmark(cfg: dict, run_name: str, unlock_holdout: bool = False, prices
         "git_commit": _git_commit(), "config_hash": config_hash(cfg), "holdout_unlocked": unlock_holdout,
         "dataset": dataset_manifest or {"sha256": "in-memory"}, "versions": _versions(),
         "label": cfg["task"]["label"], "horizons": cfg["task"]["horizons"],
-        "n_dataset_rows": int(len(run["dataset"])), "jev_status": run["jev_status"],
+        "n_dataset_rows": int(len(run["dataset"])), "external_status": run["external_status"],
+        "risk_free": cfg["backtest"]["risk_free"] if risk_free is not None else "zero",
+        "primary_rule": cfg["backtest"]["primary_rule"],
         "models_run": sorted(run["predictions"]["model"].unique().tolist()),
         "models_not_run": metrics["not_run"],
     }
@@ -123,7 +133,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="jevbench", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("command", choices=["download", "quality", "benchmark", "sensitivity",
-                                            "jev-estimate", "jev-annotate", "report"])
+                                            "jev-estimate", "jev-annotate", "report", "visualise"])
     parser.add_argument("--config", default=None, help="base config (default config/experiment.yaml)")
     parser.add_argument("--overrides", nargs="*", default=[], help="override YAML files applied in order")
     parser.add_argument("--name", default=None, help="run name (default: experiment id + UTC timestamp)")
@@ -138,6 +148,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--date-from", default=None)
     parser.add_argument("--date-to", default=None)
     parser.add_argument("--sample", type=int, default=None, help="jev-annotate: random subset of rows")
+    parser.add_argument("--pilot", type=int, default=None,
+                        help="jev-annotate: N random rows dated before the first test fold, for a sanity check "
+                             "that cannot touch any evaluated date")
     args = parser.parse_args(argv)
     cfg = load_config(args.config, args.overrides)
 
@@ -146,7 +159,15 @@ def main(argv: list[str] | None = None) -> int:
                      "EXPERIMENT_MEMORY.md section 4 before running this.")
 
     if args.command == "download":
-        print(json.dumps(download_prices(cfg, force=args.force), indent=2))
+        if cache_paths(cfg)[0].exists() and not args.force:
+            print(f"Prices already frozen at {cache_paths(cfg)[0]}; not downloaded again.")
+        else:
+            print(json.dumps(download_prices(cfg, force=args.force), indent=2))
+        if cfg["backtest"]["risk_free"] == "tbill":
+            if risk_free_paths(cfg)[0].exists() and not args.force:
+                print(f"Risk-free rate already frozen at {risk_free_paths(cfg)[0]}; not downloaded again.")
+            else:
+                print(json.dumps(download_risk_free(cfg, force=args.force), indent=2))
     elif args.command == "quality":
         prices = load_prices(cfg, unlock_holdout=False)
         print(json.dumps(quality_report(prices, cfg["data"]["market_ticker"]), indent=2))
@@ -168,6 +189,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.publish:
             (REPO_ROOT / "EXPERIMENT_REPORT.md").write_text(text, encoding="utf-8")
             print("Wrote EXPERIMENT_REPORT.md")
+    elif args.command == "visualise":
+        from .visualise import write_page
+
+        print(f"Wrote {write_page(RESULTS_DIR / args.name)}")
     else:
         return _jev_command(args, cfg)
     return 0
@@ -180,7 +205,12 @@ def _jev_command(args, cfg: dict) -> int:
     full = build_dataset(prices, cfg, keep_burn_in=True)
     modelling = build_dataset(prices, cfg)
     ctx = jev.JevContext(full, cfg)
-    rows = jev.select_rows(ctx.full, modelling, args.date_from, args.date_to, args.sample, int(cfg["seed"]))
+    date_to, sample = args.date_to, args.sample
+    if args.pilot is not None:
+        # Strictly before the first test fold: these dates are only ever training data.
+        date_to = pd.Timestamp(cfg["splits"]["first_test_start"]) - pd.Timedelta(days=1)
+        sample = args.pilot
+    rows = jev.select_rows(ctx.full, modelling, args.date_from, date_to, sample, int(cfg["seed"]))
 
     if args.command == "jev-estimate":
         print(json.dumps(jev.estimate_cost(ctx, rows, cfg), indent=2))

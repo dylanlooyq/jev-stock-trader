@@ -1,7 +1,8 @@
-"""Jev arms of the benchmark. They read saved Jev outputs; they never call the API.
+"""Arms for external decision models (Jev, and any provider registered later).
 
-Signal arms use Jev's own class probabilities directly (zero training on our labels).
-Head arms train a gradient-boosted model on Jev's outputs, with or without the
+They read saved provider outputs; they never call an API. Signal arms use the
+provider's own class probabilities directly (zero training on our labels). Head arms
+train a gradient-boosted model on the provider's outputs, with or without the
 controlled features, using exactly the tuning procedure of the GBT baseline.
 """
 from __future__ import annotations
@@ -10,17 +11,22 @@ import numpy as np
 
 from .. import NO_PREDICTION
 from ..features import FEATURES
-from ..jev import VARIANTS, output_columns
+from ..providers import PROVIDERS, VARIANTS, arm_name, prefix
 from .base import Model, macro_f1
 from .classical import GradientBoostedTrees
 
+OUTPUT_KINDS = ("p_sell", "p_hold", "p_buy", "up", "big")
 
-class JevSignal(Model):
-    family = "jev"
 
-    def __init__(self, model_id: str, variant: str):
+def output_columns(col_prefix: str, horizons: list[int], kinds=OUTPUT_KINDS) -> list[str]:
+    return [f"{col_prefix}_{kind}_{h}" for h in horizons for kind in kinds]
+
+
+class ExternalSignal(Model):
+    def __init__(self, model_id: str, provider: str, variant: str):
         self.model_id = model_id
-        self.prefix = VARIANTS[variant]
+        self.family = provider
+        self.prefix = prefix(provider, variant)
         self.required_columns = (f"{self.prefix}_status",)
 
     def _predict(self, df, horizon):
@@ -39,17 +45,19 @@ class JevSignal(Model):
         return self._predict(df, self.horizon_)
 
 
-def make_jev_models(cfg: dict) -> dict:
-    """Factories for the six Jev arms, keyed by the names used in models.enabled."""
+def make_external_models(cfg: dict) -> dict:
+    """Factories for the six arms of every registered provider, keyed by arm name."""
     horizons = list(cfg["task"]["horizons"])
     section, n_jobs = cfg["models"]["gbt"], cfg["models"]["n_jobs"]
     factories = {}
-    for variant, prefix in VARIANTS.items():
-        jev_cols = output_columns(prefix, horizons)
-        required = (f"{prefix}_status",)
-        factories[f"jev_signal_{variant}"] = lambda v=variant: JevSignal(f"jev_signal_{v}", v)
-        factories[f"jev_head_{variant}"] = lambda v=variant, c=jev_cols, r=required: GradientBoostedTrees(
-            f"jev_head_{v}", section, c, n_jobs, family="jev", required_columns=r)
-        factories[f"jev_plus_controlled_{variant}"] = lambda v=variant, c=jev_cols, r=required: GradientBoostedTrees(
-            f"jev_plus_controlled_{v}", section, [*FEATURES, *c], n_jobs, family="jev", required_columns=r)
+    for provider in PROVIDERS:
+        for variant in VARIANTS:
+            cols = output_columns(prefix(provider, variant), horizons)
+            required = (f"{prefix(provider, variant)}_status",)
+            signal, head, plus = (arm_name(provider, k, variant) for k in ("signal", "head", "plus_controlled"))
+            factories[signal] = lambda n=signal, p=provider, v=variant: ExternalSignal(n, p, v)
+            factories[head] = lambda n=head, p=provider, c=cols, r=required: GradientBoostedTrees(
+                n, section, c, n_jobs, family=p, required_columns=r)
+            factories[plus] = lambda n=plus, p=provider, c=cols, r=required: GradientBoostedTrees(
+                n, section, [*FEATURES, *c], n_jobs, family=p, required_columns=r)
     return factories

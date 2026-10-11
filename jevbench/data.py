@@ -167,6 +167,62 @@ def load_prices(cfg: dict, unlock_holdout: bool = False) -> pd.DataFrame:
     return prices.sort_values(["ticker", "date"]).reset_index(drop=True)
 
 
+def risk_free_paths(cfg: dict) -> tuple[Path, Path]:
+    d = cfg["data"]
+    base = REPO_ROOT / d["cache_dir"]
+    stem = f"riskfree_{d['start']}_{d['end']}"
+    return base / f"{stem}.parquet", base / f"{stem}.manifest.json"
+
+
+def download_risk_free(cfg: dict, force: bool = False, retries: int = 4) -> dict:
+    """Download the Treasury bill yield and freeze it. Stored as percent per year, as published."""
+    import yfinance as yf
+
+    parquet_path, manifest_path = risk_free_paths(cfg)
+    if parquet_path.exists() and not force:
+        raise FileExistsError(f"{parquet_path} already exists.")
+    d = cfg["data"]
+    end_exclusive = (pd.Timestamp(d["end"]) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    series = pd.Series(dtype=float)
+    for attempt in range(retries):
+        try:
+            raw = yf.download(d["risk_free_ticker"], start=d["start"], end=end_exclusive, auto_adjust=False,
+                              actions=False, progress=False)
+            close = raw["Close"]
+            series = (close.iloc[:, 0] if isinstance(close, pd.DataFrame) else close).dropna()
+        except Exception as exc:
+            print(f"  fetch error for {d['risk_free_ticker']}: {exc!r}"[:300])
+        if len(series):
+            break
+        time.sleep(2 * (attempt + 1))
+    if not len(series):
+        raise RuntimeError(f"Risk-free series {d['risk_free_ticker']} could not be downloaded.")
+    table = pd.DataFrame({"date": pd.to_datetime(series.index).tz_localize(None).normalize(),
+                          "annual_yield_pct": series.to_numpy(dtype=float)})
+    parquet_path.parent.mkdir(parents=True, exist_ok=True)
+    table.to_parquet(parquet_path, index=False)
+    manifest = {
+        "ticker": d["risk_free_ticker"], "source": d["source"], "rows": int(len(table)),
+        "first_date": str(table["date"].min().date()), "last_date": str(table["date"].max().date()),
+        "min_yield_pct": float(table["annual_yield_pct"].min()), "max_yield_pct": float(table["annual_yield_pct"].max()),
+        "downloaded_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "sha256": file_sha256(parquet_path),
+    }
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    return manifest
+
+
+def load_risk_free(cfg: dict) -> pd.Series | None:
+    """Daily risk-free rate indexed by date (annual yield / 252), or None when configured as zero."""
+    if cfg["backtest"]["risk_free"] == "zero":
+        return None
+    parquet_path, _ = risk_free_paths(cfg)
+    if not parquet_path.exists():
+        raise FileNotFoundError(f"{parquet_path} not found. Run the `download` command first.")
+    table = pd.read_parquet(parquet_path)
+    return pd.Series(table["annual_yield_pct"].to_numpy() / 100 / 252, index=pd.to_datetime(table["date"]), name="rf")
+
+
 def quality_report(prices: pd.DataFrame, market_ticker: str) -> dict:
     """Descriptive data-quality checks. Reports problems; fixes nothing."""
     calendar = prices.loc[prices["ticker"] == market_ticker, "date"]

@@ -29,3 +29,12 @@ class Model:
 
     def predict(self, df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray | None]:
         raise NotImplementedError
+
+    def rank_score(self, df: pd.DataFrame, pred: np.ndarray, proba: np.ndarray | None) -> np.ndarray:
+        """How attractive each row is to hold; higher is better. Used by the ranking portfolio.
+
+        Probabilistic models use P(BUY) - P(SELL). A missing score means the row is never held.
+        """
+        if proba is not None:
+            return proba[:, 2] - proba[:, 0]
+        return np.where(pred < 0, np.nan, pred.astype(float) - 1.0)

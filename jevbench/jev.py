@@ -29,10 +29,12 @@ import pandas as pd
 from . import CLASS_NAMES
 from .config import REPO_ROOT
 from .features import FEATURES
+from .models.jev_arms import output_columns
+from .providers import PROVIDERS, prefix
 
 BUCKET_LABELS = ["very low", "low", "typical", "high", "very high"]
 OPTION_ORDERS = [("BUY", "HOLD", "SELL"), ("HOLD", "SELL", "BUY"), ("SELL", "BUY", "HOLD")]
-VARIANTS = {"zero": "jevz", "examples": "jevx"}   # variant name -> column prefix
+VARIANTS = PROVIDERS["jev"]["prefix"]   # variant name -> column prefix
 
 # feature -> (group, description, format)
 FEATURE_TEXT = {
@@ -411,14 +413,10 @@ def parse_answers(answers: dict, horizons: list[int]) -> dict:
     return out
 
 
-def output_columns(prefix: str, horizons: list[int], kinds=("p_sell", "p_hold", "p_buy", "up", "big")) -> list[str]:
-    return [f"{prefix}_{kind}_{h}" for h in horizons for kind in kinds]
-
-
 # --------------------------------------------------------------------------- annotation
 
-def outputs_paths(cfg: dict, variant: str) -> tuple[Path, Path]:
-    stem = f"jev_outputs_{cfg['data']['universe_name']}_{cfg['jev']['wording_version']}_{variant}"
+def outputs_paths(cfg: dict, variant: str, provider: str = "jev") -> tuple[Path, Path]:
+    stem = f"{provider}_outputs_{cfg['data']['universe_name']}_{cfg['jev']['wording_version']}_{variant}"
     base = REPO_ROOT / cfg["data"]["cache_dir"]
     return base / f"{stem}.parquet", base / f"{stem}.manifest.json"
 
@@ -491,7 +489,7 @@ def estimate_cost(ctx: JevContext, rows: np.ndarray, cfg: dict, n_probe: int = 2
 def annotate(ctx: JevContext, rows: np.ndarray, variant: str, client: JevClient, cfg: dict,
              dataset_sha: str) -> tuple[pd.DataFrame, dict]:
     """Query Jev for each row and return a table of outputs plus a manifest. Writes nothing."""
-    prefix = VARIANTS[variant]
+    col = VARIANTS[variant]
     questions = build_questions(cfg)
     horizons = list(cfg["task"]["horizons"])
     started = time.time()
@@ -502,21 +500,21 @@ def annotate(ctx: JevContext, rows: np.ndarray, variant: str, client: JevClient,
             body = client.evaluate(ctx.state(i, variant == "examples"), questions)
             parsed = parse_answers(body.get("answers") or {}, horizons)
             ok = all(parsed[f"orders_ok_{h}"] > 0 for h in horizons)
-            record.update({f"{prefix}_{k}": v for k, v in parsed.items()})
-            record[f"{prefix}_status"] = "ok" if ok else "invalid_answer"
+            record.update({f"{col}_{k}": v for k, v in parsed.items()})
+            record[f"{col}_status"] = "ok" if ok else "invalid_answer"
         except (JevBudgetExceeded, JevModelMismatch):
             raise
         except JevError as exc:
-            record[f"{prefix}_status"] = f"error: {exc}"[:200]
+            record[f"{col}_status"] = f"error: {exc}"[:200]
         return record
 
     with ThreadPoolExecutor(max_workers=int(cfg["jev"]["max_workers"])) as pool:
         records = list(pool.map(one, [int(i) for i in rows]))
     table = pd.DataFrame.from_records(records)
-    for col in output_columns(prefix, horizons):
-        if col not in table:
-            table[col] = np.nan
-    status = table[f"{prefix}_status"]
+    for name in output_columns(col, horizons):
+        if name not in table:
+            table[name] = np.nan
+    status = table[f"{col}_status"]
     manifest = {
         "variant": variant, "fingerprint": request_fingerprint(cfg), "dataset_sha256": dataset_sha,
         "label": cfg["task"]["label"], "horizons": horizons,
@@ -531,25 +529,34 @@ def annotate(ctx: JevContext, rows: np.ndarray, variant: str, client: JevClient,
     return table, manifest
 
 
-def attach_jev_outputs(ds: pd.DataFrame, cfg: dict) -> tuple[pd.DataFrame, dict]:
-    """Merge any saved Jev outputs into the dataset. Returns the dataset and a status per variant.
+def expected_fingerprint_matches(provider: str, manifest: dict, cfg: dict) -> bool:
+    """Whether saved outputs of `provider` were produced under the current configuration."""
+    if provider == "jev":
+        return matches_saved_outputs(manifest, cfg)
+    return False   # no other provider has a client yet, so nothing it saved can be trusted
+
+
+def attach_outputs(ds: pd.DataFrame, cfg: dict) -> tuple[pd.DataFrame, dict]:
+    """Merge any saved provider outputs into the dataset. Returns the dataset and a status per provider variant.
 
     Outputs produced under a different model, wording, question set or label definition
     are refused, never silently reused.
     """
     status = {}
-    for variant, prefix in VARIANTS.items():
-        parquet_path, manifest_path = outputs_paths(cfg, variant)
-        if not parquet_path.exists():
-            status[variant] = "not run: no saved Jev outputs"
-            continue
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        if not matches_saved_outputs(manifest, cfg):
-            status[variant] = "refused: saved Jev outputs were produced under a different configuration"
-            continue
-        table = pd.read_parquet(parquet_path)
-        table["date"] = pd.to_datetime(table["date"])
-        ds = ds.merge(table, on=["date", "ticker"], how="left", validate="one_to_one")
-        coverage = float(ds[f"{prefix}_status"].notna().mean())
-        status[variant] = f"available: {coverage:.1%} of rows annotated"
+    for provider in PROVIDERS:
+        for variant in PROVIDERS[provider]["prefix"]:
+            key = f"{provider}/{variant}"
+            parquet_path, manifest_path = outputs_paths(cfg, variant, provider)
+            if not parquet_path.exists():
+                status[key] = "not run: no saved outputs"
+                continue
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if not expected_fingerprint_matches(provider, manifest, cfg):
+                status[key] = "refused: saved outputs were produced under a different configuration"
+                continue
+            table = pd.read_parquet(parquet_path)
+            table["date"] = pd.to_datetime(table["date"])
+            ds = ds.merge(table, on=["date", "ticker"], how="left", validate="one_to_one")
+            coverage = float(ds[f"{prefix(provider, variant)}_status"].notna().mean())
+            status[key] = f"available: {coverage:.1%} of rows annotated"
     return ds, status

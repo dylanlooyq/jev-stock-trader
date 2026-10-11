@@ -1,0 +1,17 @@
+# Overrides restoring the 100-stock universe used before 2026-10-11 (EXPERIMENT_MEMORY.md,
+# decision D9). Hand-fixed list of 100 large US stocks chosen in 2026; not point-in-time.
+
+data:
+  universe_name: us_large_cap_100_v1
+  tickers: [
+    AAPL, MSFT, AMZN, GOOGL, META, NVDA, TSLA, BRK-B, JPM, JNJ,
+    V, PG, UNH, HD, MA, XOM, CVX, ABBV, PFE, KO,
+    PEP, MRK, LLY, AVGO, COST, WMT, BAC, DIS, CSCO, ADBE,
+    CRM, ACN, TMO, ABT, MCD, NKE, DHR, VZ, CMCSA, NFLX,
+    INTC, TXN, QCOM, WFC, PM, UPS, NEE, MS, BMY, RTX,
+    HON, UNP, ORCL, AMGN, IBM, LOW, GS, CAT, SBUX, BA,
+    AMD, INTU, GE, MDT, AXP, BLK, DE, GILD, CVS, LMT,
+    C, MO, SCHW, T, MDLZ, TGT, BKNG, ADP, CL, SO,
+    DUK, USB, MMM, COP, GD, EMR, F, GM, FDX, SPG,
+    MET, AIG, COF, BK, TMUS, LIN, PYPL, AMT, ISRG, NOW,
+  ]
