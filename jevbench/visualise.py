@@ -14,9 +14,10 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from .backtest import names_held, rank_weights, trade_rules, tranche_weights
+from .backtest import names_held, rank_weights, trade_rules, trading_stats, tranche_weights, with_cost
 from .providers import PROVIDERS, describe_arm
 from .report import detectable_effect
+from .stats import holm, paired_sharpe_bootstrap
 
 LABELS = {
     "gbt": "Gradient-boosted trees", "logreg": "Logistic regression", "random_forest": "Random forest",
@@ -25,9 +26,19 @@ LABELS = {
     "always_buy": "Equal-weight buy and hold", "market_buy_and_hold": "Market index buy and hold",
 }
 KINDS = {"baseline": "Baseline"}
-# The "Models" filter on the page. Benchmarks and no-skill baselines belong to no group and always stay on screen.
+# Every traded model belongs to one group; benchmarks and no-skill baselines belong to none.
 MODEL_GROUPS = {"index_ml": "Index ML Classifier", "rule": "Rule Based",
                 "jev_ml": "ML Classifier with Jev", "jev": "Jev"}
+# The "Strategies" filter on the page. `groups` lists the groups a choice shows (None for all of them).
+# Strategies with no group stay on screen unless `keep` names the only ones to keep.
+STRATEGY_FILTERS = [
+    {"id": "all", "label": "All strategies", "groups": None, "keep": None},
+    {"id": "ml", "label": "ML classifiers", "groups": ["index_ml"], "keep": None},
+    {"id": "jev_related", "label": "Jev related", "groups": ["jev", "jev_ml"], "keep": None},
+    {"id": "jev_hold", "label": "Jev and buy & hold", "groups": ["jev"], "keep": ["always_buy"]},
+]
+# Statistics that change when the trading cost does; the page swaps these when costs are switched off.
+COST_STATS = ("cumulative_net_return", "cagr", "sharpe", "max_drawdown", "alpha", "beta")
 PASSIVE = ("always_buy", "market_buy_and_hold")
 MAX_POINTS = 900   # per line; longer series are thinned for drawing only
 ASSET_NAMES = {
@@ -59,8 +70,47 @@ def _holdings(preds: pd.DataFrame, cfg: dict, rule: str, tickers: list[str]) -> 
     return out
 
 
+def _lines(parts: dict[str, pd.DataFrame]) -> dict:
+    """Growth of 1 and drawdown for each strategy, thinned for drawing only."""
+    dates, growth, drawdown, thinned = [], {}, {}, 1
+    for m, part in parts.items():
+        equity = np.cumprod(1 + part["net"].to_numpy())
+        dd = (equity / np.maximum(np.maximum.accumulate(equity), 1.0) - 1) * 100
+        thinned = max(1, int(np.ceil(len(equity) / MAX_POINTS)))
+        keep = np.unique(np.r_[np.arange(0, len(equity), thinned), len(equity) - 1])
+        dates = part["date"].dt.strftime("%Y-%m-%d").to_numpy()[keep].tolist()
+        growth[m] = np.round(equity[keep], 4).tolist()
+        drawdown[m] = np.round(dd[keep], 2).tolist()
+    return {"dates": dates, "growth": growth, "drawdown": drawdown, "thinned": thinned}
+
+
+def _without_costs(parts: dict[str, pd.DataFrame], comparisons: list[dict], block: int, horizon: int, cfg: dict) -> dict:
+    """The same view with the trading cost set to zero: a what-if, not part of the experiment's test.
+
+    Lines, the statistics that depend on cost, and the Sharpe comparison against buy and hold,
+    bootstrapped with the benchmark's own settings so the two versions differ only in the cost.
+    """
+    free = {m: with_cost(part, 0.0) for m, part in parts.items()}
+    lines, market = _lines(free), free.get("market_buy_and_hold")
+    stats = {}
+    for m, d in free.items():
+        aligned = market is not None and d["date"].reset_index(drop=True).equals(market["date"].reset_index(drop=True))
+        s = trading_stats(d, 1.0, market["excess"].to_numpy() if aligned else None)
+        stats[m] = {k: s.get(k) for k in COST_STATS}
+    st, hold = cfg["stats"], free["always_buy"]["excess"].to_numpy()
+    tested = [c["a"] for c in comparisons if "diff" in c]
+    found = [paired_sharpe_bootstrap(free[m]["excess"].to_numpy(), hold, block, int(st["n_boot"]),
+                                     int(cfg["seed"]) + 7 * horizon, float(st["alpha"])) for m in tested]
+    return {
+        "growth": lines["growth"], "drawdown": lines["drawdown"], "stats": stats,
+        "diffs": [{"id": m, "diff": c["diff"], "lo": c["ci_low"], "hi": c["ci_high"], "p": p}
+                  for m, c, p in zip(tested, found, holm([c["p_value"] for c in found]))],
+        "power": detectable_effect(found),
+    }
+
+
 def _group(model: str, family: str) -> str | None:
-    """Which "Models" filter group a strategy belongs to; None for benchmarks and baselines."""
+    """Which model group a strategy belongs to; None for benchmarks and baselines."""
     if family == "classifier":
         return "index_ml"
     if family == "rule":
@@ -166,27 +216,20 @@ def build_payload(run_dir: Path) -> dict:
                 stats = block["trading"][rule]
                 models = sorted(stats, key=lambda m: (m in PASSIVE, order.index(m) if m in order else len(order), m))
                 strategies = [_strategy(m, families, rule) for m in models]
-                dates, growth, drawdown, thinned = [], {}, {}, 1
-                for m in models:
-                    part = sub[(sub["model"] == m) & (sub["rule"] == ("passive" if m in PASSIVE else rule))].sort_values("date")
-                    equity = np.cumprod(1 + part["net"].to_numpy())
-                    dd = (equity / np.maximum(np.maximum.accumulate(equity), 1.0) - 1) * 100
-                    thinned = max(1, int(np.ceil(len(equity) / MAX_POINTS)))
-                    keep = np.unique(np.r_[np.arange(0, len(equity), thinned), len(equity) - 1])
-                    dates = part["date"].dt.strftime("%Y-%m-%d").to_numpy()[keep].tolist()
-                    growth[m] = np.round(equity[keep], 4).tolist()
-                    drawdown[m] = np.round(dd[keep], 2).tolist()
+                parts = {m: sub[(sub["model"] == m) & (sub["rule"] == ("passive" if m in PASSIVE else rule))].sort_values("date")
+                         for m in models}
                 comparisons = block["trading_comparisons"][rule]["vs_buy_and_hold"]
                 power = detectable_effect(comparisons)
                 views[f"{segment}|{rule}|{h}"] = {
-                    "strategies": strategies, "dates": dates, "growth": growth, "drawdown": drawdown,
-                    "thinned": thinned, "first_date": block["first_date"], "last_date": block["last_date"],
+                    "strategies": strategies, **_lines(parts),
+                    "first_date": block["first_date"], "last_date": block["last_date"],
                     "stats": {m: {k: stats[m].get(k) for k in (
                         "cumulative_net_return", "cagr", "sharpe", "max_drawdown", "annual_turnover",
                         "mean_exposure", "alpha", "beta", "sharpe_cost_10bps")} for m in models},
                     "diffs": [{"id": c["a"], "diff": c["diff"], "lo": c["ci_low"], "hi": c["ci_high"],
                                "p": c.get("p_holm", c["p_value"])} for c in comparisons if "diff" in c],
                     "power": power,
+                    "free": _without_costs(parts, comparisons, int(block["block_length_days"]), h, cfg),
                     "holdings": _holdings(view_preds, cfg, rule, tickers) if view_preds is not None else None,
                 }
 
@@ -195,7 +238,8 @@ def build_payload(run_dir: Path) -> dict:
                    for r in rules}
     present = {s["group"] for v in views.values() for s in v["strategies"]}
     return {
-        "model_groups": [{"id": g, "label": label, "present": g in present} for g, label in MODEL_GROUPS.items()],
+        "filters": [{**f, "present": f["groups"] is None or any(g in present for g in f["groups"])}
+                    for f in STRATEGY_FILTERS],
         "run": {
             "name": manifest["run_name"], "smoke": cfg["experiment_id"] == "smoke",
             "full_window": bool(manifest["holdout_unlocked"]), "generated": manifest["finished_at_utc"],

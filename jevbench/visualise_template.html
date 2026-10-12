@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Backtests</title>
+<title>Jev versus traditional classifiers: backtests</title>
 <style>
-  /* Layout: one column. A locked bar (title and tabs) stays on screen; below it the caution,
-     the filters, the takeaway, four headline figures, then growth, drawdown, the interval
+  /* Layout: one column. A locked bar (title, tabs and filters) stays on screen; below it the
+     caution, the takeaway, four headline figures, then growth, drawdown, the interval
      chart and the full table. The Models and strategies tab is the report half. */
   :root {
     color-scheme: light;
@@ -33,8 +33,10 @@
   h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: clamp(1.35rem, 2.6vw, 1.75rem); line-height: 1.2; }
   h2 { margin: 0; font-size: 1.02rem; font-weight: 600; }
   p { margin: 0; }
-  .topbar { position: sticky; top: 0; z-index: 10; background: var(--page); padding-top: 18px;
-    display: flex; flex-direction: column; gap: 8px; }
+  .topbar { position: sticky; top: 0; z-index: 10; background: var(--page); padding-block: 14px 12px;
+    border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+  .titles { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; }
+  .run { color: var(--muted); font-size: .82rem; }
   .takeaway { max-width: 70ch; }
   .caution { max-width: 78ch; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
     font-size: .87rem; color: var(--text-2); }
@@ -53,7 +55,24 @@
     border-radius: 7px; background: var(--page); color: var(--text); }
   .btn[aria-pressed="true"] { background: var(--text); color: var(--page); border-color: var(--text); }
   .btn:disabled { opacity: .4; cursor: not-allowed; }
-  .btn:focus-visible, .key:focus-visible, .select:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  .btn:focus-visible, .key:focus-visible, .select:focus-visible, .term:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  /* On a narrow screen the locked bar stays short: the filters sit on one row that scrolls sideways. */
+  @media (max-width: 640px) {
+    .run { display: none; }
+    .controls { flex-wrap: nowrap; overflow-x: auto; padding: 8px 10px; gap: 12px; }
+    .control { flex: none; }
+    .seg { flex-wrap: nowrap; }
+    .select { min-width: 0; }
+  }
+
+  /* A term with a popup explanation. One popup node is shared by every term on the page. */
+  .term { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+  .pop { position: fixed; z-index: 20; pointer-events: none; width: max-content; max-width: min(25rem, calc(100vw - 16px));
+    display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; background: var(--pop); border: 1px solid var(--border);
+    border-radius: 8px; box-shadow: var(--shadow); font-size: .82rem; font-weight: 400; line-height: 1.45; color: var(--text-2);
+    text-align: left; white-space: normal; }
+  .pop[hidden] { display: none; }
+  .pop b { color: var(--text); font-weight: 600; }
 
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 14px; }
   .tile, .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px;
@@ -121,15 +140,18 @@
 <body>
 <main class="page">
   <header class="topbar">
-    <h1 id="title">Backtests</h1>
+    <div class="titles">
+      <h1>Jev versus traditional classifiers</h1>
+      <span class="run" id="run"></span>
+    </div>
     <div class="tabs" role="tablist" id="tabs">
       <button class="tab" role="tab" id="tab-backtests" aria-selected="true" aria-controls="view-backtests">Backtests</button>
       <button class="tab" role="tab" id="tab-models" aria-selected="false" aria-controls="view-models">Models and strategies</button>
     </div>
+    <div class="controls" id="controls" role="group" aria-label="Filters"></div>
   </header>
 
   <p class="caution" id="caution"></p>
-  <div class="controls" id="controls" role="group" aria-label="Filters"></div>
 
   <div class="stack" id="view-backtests" role="tabpanel" aria-labelledby="tab-backtests">
   <p class="takeaway" id="takeaway"></p>
@@ -137,7 +159,7 @@
   <section class="tiles" id="tiles"></section>
 
   <section class="card">
-    <h2>Growth of $1, net of costs<span class="scale" id="growth-scale"></span></h2>
+    <h2><span id="growth-title"></span><span class="scale" id="growth-scale"></span></h2>
     <p class="note" id="growth-note"></p>
     <div class="legend" id="legend"></div>
     <div class="chart" id="growth"></div>
@@ -151,7 +173,7 @@
 
   <section class="card">
     <h2>Sharpe ratio against equal-weight buy and hold</h2>
-    <p class="note">Each strategy's net Sharpe ratio minus buy and hold, with a 95% bootstrap interval. Right of zero is better. An interval that crosses zero means the difference could be chance.</p>
+    <p class="note" id="forest-note"></p>
     <div class="chart" id="forest" style="min-height: 240px"></div>
   </section>
 
@@ -164,7 +186,7 @@
 
   <section class="card">
     <h2>All strategies</h2>
-    <p class="note">Sorted by net Sharpe ratio. Alpha and beta are measured against the market index. The last column repeats the backtest at a cost of 10 basis points per trade.</p>
+    <p class="note" id="table-note"></p>
     <div class="table-wrap"><table id="table"></table></div>
   </section>
 
@@ -179,10 +201,9 @@
   const DATA = /*__DATA__*/null;
   const NS = 'http://www.w3.org/2000/svg';
   const $ = (id) => document.getElementById(id);
-  const GROUPS = DATA.model_groups.filter((g) => g.present);
   const state = {
     segment: DATA.defaults.segment, rule: DATA.defaults.rule, horizon: DATA.defaults.horizon, hidden: new Set(),
-    tab: 'backtests', models: new Set(GROUPS.map((g) => g.id)),
+    tab: 'backtests', filter: DATA.filters[0].id, costs: true,
   };
 
   const SEGMENTS = { all: 'All folds', dev: 'Before the final two years', holdout: 'Final two years' };
@@ -205,6 +226,7 @@
   const num = (v, d = 2) => (v == null ? 'n/a' : fixed(v, d));
   const pct = (v, d = 1) => (v == null ? 'n/a' : fixed(v * 100, d) + '%');
   const signed = (v) => { const s = fixed(v, 2); return Number(s) > 0 ? '+' + s : s; };
+  const ordinal = (n) => { const v = n % 100; return n + (['th', 'st', 'nd', 'rd'][v > 10 && v < 14 ? 0 : v % 10] || 'th'); };
   const time = (d) => Date.parse(d + 'T00:00:00Z');
   const longDate = (d) => { const [y, m, day] = d.split('-').map(Number); return `${MONTHS[m - 1]} ${day}, ${y}`; };
 
@@ -228,10 +250,87 @@
     return s;
   }
 
-  const view = () => DATA.views[`${state.segment}|${state.rule}|${state.horizon}`];
-  // The Models filter. Benchmarks and no-skill baselines have no group and always stay.
-  const inFilter = (s) => !s.group || state.models.has(s.group);
+  // With trading costs removed, the lines, the statistics that depend on cost and the Sharpe
+  // comparison are swapped for their cost-free versions. Everything else in the view is shared.
+  const freeViews = new Map();
+  function view() {
+    const key = `${state.segment}|${state.rule}|${state.horizon}`, v = DATA.views[key];
+    if (state.costs) return v;
+    if (!freeViews.has(key)) {
+      const stats = {};
+      Object.keys(v.stats).forEach((m) => { stats[m] = { ...v.stats[m], ...v.free.stats[m] }; });
+      freeViews.set(key, { ...v, ...v.free, stats });
+    }
+    return freeViews.get(key);
+  }
+  // The Strategies filter. Benchmarks and no-skill baselines have no group: they stay unless the choice keeps only some.
+  const filter = () => DATA.filters.find((f) => f.id === state.filter);
+  const groupShown = (g) => { const f = filter(); return !f.groups || f.groups.includes(g); };
+  const inFilter = (s) => (s.group ? groupShown(s.group) : !filter().keep || filter().keep.includes(s.id));
   const shownStrategies = () => view().strategies.filter(inFilter);
+
+  // A term with a popup explanation, on hover, keyboard focus or tap. Escape or a tap elsewhere closes it.
+  // The popup follows its term while the page scrolls and closes once the term slides under the locked bar.
+  const pop = el('div', 'pop');
+  pop.id = 'pop';
+  pop.setAttribute('role', 'tooltip');
+  pop.hidden = true;
+  document.body.appendChild(pop);
+  let popFor = null;
+  const hidePop = () => { pop.hidden = true; popFor = null; };
+  function placePop(scrolled) {
+    const r = popFor.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+    const bar = document.querySelector('.topbar').getBoundingClientRect().bottom;
+    if (scrolled && (r.top < bar || r.bottom > window.innerHeight)) { hidePop(); return; }
+    const above = r.bottom + 8 + h > window.innerHeight && r.top - 8 - h > bar;
+    pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+    pop.style.top = (above ? r.top - 8 - h : r.bottom + 8) + 'px';
+  }
+  function showPop(node) {
+    if (popFor === node) return;
+    popFor = node;
+    pop.replaceChildren(...sharpeHelp());
+    pop.hidden = false;
+    placePop();
+  }
+  function term(text) {
+    const node = el('span', 'term', text);
+    node.tabIndex = 0;
+    node.setAttribute('aria-describedby', 'pop');
+    node.addEventListener('pointerenter', (event) => { if (event.pointerType === 'mouse') showPop(node); });
+    node.addEventListener('pointerleave', (event) => { if (event.pointerType === 'mouse') hidePop(); });
+    node.addEventListener('focus', () => showPop(node));
+    node.addEventListener('blur', hidePop);
+    node.addEventListener('click', (event) => { event.stopPropagation(); showPop(node); });
+    return node;
+  }
+  document.addEventListener('click', hidePop);
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') hidePop(); });
+  window.addEventListener('scroll', () => { if (popFor) placePop(true); }, { passive: true });
+
+  // What the Sharpe ratio is and why it can be negative, with the costliest strategy on screen as the example.
+  function sharpeHelp() {
+    const v = view(), run = DATA.run, net = state.costs;
+    const cash = run.risk_free === 'tbill';
+    const line = (head, text) => { const p = el('p'); p.append(el('b', null, head), text); return p; };
+    const what = `Return earned per unit of risk: a strategy’s average daily return above ${cash ? 'the Treasury bill rate' : 'zero'}, divided by how much its daily returns swing, scaled to a year.`
+      + (net ? ` “Net” means the trading cost of ${run.cost_bps} basis points per trade is taken off first.` : ' Trading costs are left out in this view.');
+    let why = cash ? 'It falls below zero whenever a strategy earns less than Treasury bills pay, so holding cash would have done better.'
+      : 'It falls below zero whenever a strategy loses money on average.';
+    if (net) {
+      const busiest = shownStrategies().filter((s) => s.kind !== 'Benchmark' && s.chart && v.stats[s.id].annual_turnover != null)
+        .sort((a, b) => v.stats[b.id].annual_turnover - v.stats[a.id].annual_turnover)[0];
+      why += ' Costs alone can cause that';
+      if (busiest) {
+        const turns = v.stats[busiest.id].annual_turnover;
+        why += `: here ${busiest.label} trades ${num(turns, 0)} times its capital a year, which costs about ${fixed(turns * run.cost_bps / 100, 1)}% a year before it earns anything`;
+      }
+      why += '. Set Trading costs to Removed to see the ratio without them.';
+    } else {
+      why += ` With costs removed, a negative ratio means the picks themselves ${cash ? 'lost to cash' : 'lost money'}.`;
+    }
+    return [line(net ? 'Net Sharpe ratio. ' : 'Sharpe ratio before costs. ', what), line('Why it can be negative. ', why)];
+  }
 
   function niceTicks(lo, hi, count) {
     const span = hi - lo || Math.abs(hi) || 1;
@@ -419,10 +518,10 @@
 
   function drawTable() {
     const v = view();
-    const cols = [['Strategy', 'left'], ['Type', 'left'], ['Net return'], ['Per year'], ['Sharpe'], ['Worst drawdown'],
-      ['Turnover per year'], ['Invested'], ['Alpha per year'], ['Beta'], ['Sharpe at 10 bps']];
+    const cols = [['Strategy', 'left'], ['Type', 'left'], [state.costs ? 'Net return' : 'Return before costs'], ['Per year'],
+      [term('Sharpe')], ['Worst drawdown'], ['Turnover per year'], ['Invested'], ['Alpha per year'], ['Beta'], ['Sharpe at 10 bps']];
     const head = el('tr');
-    cols.forEach(([label, cls]) => head.appendChild(el('th', cls, label)));
+    cols.forEach(([label, cls]) => { const th = el('th', cls); th.append(label); head.appendChild(th); });
     const thead = el('thead'); thead.appendChild(head);
     const tbody = el('tbody');
     shownStrategies().sort((a, b) => (v.stats[b.id].sharpe ?? -9) - (v.stats[a.id].sharpe ?? -9)).forEach((s) => {
@@ -474,67 +573,71 @@
   }
 
   // Filters are built once and then only synced, so a dropdown keeps keyboard focus while it changes the page.
-  // Period, portfolio rule and holding period pick exactly one value; Models can pick several.
+  // Every filter picks exactly one value. Strategies also applies to the Models and strategies tab; the rest do not.
   const syncs = [];
   function buildControls() {
     const field = (label, forId, control, onlyBacktests) => {
       const wrap = el('div', 'control');
       const lab = el('label', 'control-label', label);
       if (forId) lab.htmlFor = forId;
-      else lab.id = 'lbl-' + label.toLowerCase();
+      else lab.id = 'lbl-' + label.toLowerCase().replace(/\s+/g, '-');
       wrap.append(lab, control);
       if (onlyBacktests) syncs.push(() => { wrap.hidden = state.tab !== 'backtests'; });
       return wrap;
     };
-    const single = [
-      ['Period', 'segment', DATA.segments.map((s) => [s, SEGMENTS[s] || s])],
-      ['Portfolio rule', 'rule', DATA.rules.map((r) => [r, RULES[r] || r])],
-      ['Holding period', 'horizon', DATA.horizons.map((h) => [h, h === 1 ? '1 day' : `${h} days`])],
-    ].filter(([, , options]) => options.length > 1);
-    const nodes = single.map(([label, key, options]) => {
+    // Options are [value, text, unavailable].
+    const dropdown = ([label, key, options, onlyBacktests]) => {
       const select = el('select', 'select');
       select.id = 'filter-' + key;
-      options.forEach(([value, text]) => { const o = el('option', null, text); o.value = String(value); select.appendChild(o); });
+      options.forEach(([value, text, unavailable]) => {
+        const o = el('option', null, unavailable ? `${text} (not in this run)` : text);
+        o.value = String(value);
+        o.disabled = Boolean(unavailable);
+        select.appendChild(o);
+      });
       select.addEventListener('change', () => {
         state[key] = typeof options[0][0] === 'number' ? Number(select.value) : select.value;
         render();
       });
       syncs.push(() => { select.value = String(state[key]); });
-      return field(label, select.id, select, true);
-    });
+      return field(label, select.id, select, onlyBacktests);
+    };
+    const nodes = [
+      ['Period', 'segment', DATA.segments.map((s) => [s, SEGMENTS[s] || s]), true],
+      ['Portfolio rule', 'rule', DATA.rules.map((r) => [r, RULES[r] || r]), true],
+      ['Holding period', 'horizon', DATA.horizons.map((h) => [h, h === 1 ? '1 day' : `${h} days`]), true],
+    ].filter(([, , options]) => options.length > 1).map(dropdown);
 
     const seg = el('div', 'seg');
     seg.setAttribute('role', 'group');
-    seg.setAttribute('aria-labelledby', 'lbl-models');
-    DATA.model_groups.forEach((g) => {
-      const b = el('button', 'btn', g.label);
+    seg.setAttribute('aria-labelledby', 'lbl-trading-costs');
+    [[true, 'Included'], [false, 'Removed']].forEach(([on, text]) => {
+      const b = el('button', 'btn', text);
       b.type = 'button';
-      if (!g.present) { b.disabled = true; b.title = 'Not in this run'; }
-      b.addEventListener('click', () => {
-        if (!state.models.has(g.id)) state.models.add(g.id);
-        else if (state.models.size > 1) state.models.delete(g.id);   // keep at least one group on screen
-        render();
-      });
-      syncs.push(() => { b.setAttribute('aria-pressed', String(state.models.has(g.id))); });
+      b.addEventListener('click', () => { state.costs = on; render(); });
+      syncs.push(() => { b.setAttribute('aria-pressed', String(state.costs === on)); });
       seg.appendChild(b);
     });
-    nodes.push(field('Models', null, seg, false));
+    nodes.push(field('Trading costs', null, seg, true));
+    nodes.push(dropdown(['Strategies', 'filter', DATA.filters.map((f) => [f.id, f.label, !f.present]), false]));
     $('controls').replaceChildren(...nodes);
   }
   const drawControls = () => syncs.forEach((sync) => sync());
 
   function drawText() {
-    const v = view(), run = DATA.run;
+    const v = view(), run = DATA.run, net = state.costs;
     const kept = new Set(shownStrategies().map((s) => s.id));
     const diffs = v.diffs.filter((d) => kept.has(d.id));
     const tested = diffs.map((d) => d.id);
     const reliable = diffs.filter((d) => d.lo > 0 || d.hi < 0).length;
-    $('title').textContent = `Backtests: ${run.name}`;
-    document.title = `Backtests: ${run.name}`;
+    const sharpeName = net ? 'net Sharpe ratio' : 'Sharpe ratio before costs';
+    hidePop();   // the terms below are rebuilt, so a popup left open would point at nothing
+    $('run').textContent = `Backtests, run ${run.name}`;
 
     const take = $('takeaway');
     take.replaceChildren();
-    take.append(`${reliable} of ${tested.length} strategies have a net Sharpe ratio reliably different from equal-weight buy and hold in this view.`);
+    take.append(`${reliable} of ${tested.length} ${tested.length === 1 ? 'strategy has' : 'strategies have'} a `, term(sharpeName),
+      ' reliably different from equal-weight buy and hold in this view.');
     if (v.power) {
       take.append(` The 95% interval on a Sharpe difference is typically ±${num(v.power.half_width)} here, so a true difference smaller than about ${num(v.power.mde_80)} would usually be missed.`);
     }
@@ -544,13 +647,20 @@
     if (run.smoke) caution.appendChild(el('span', 'flag', 'Pipeline check, not a finding. '));
     else if (!run.full_window) caution.appendChild(el('span', 'flag', 'Partial window, not the verdict run. '));
     else if (!run.external_ran.length) caution.appendChild(el('span', 'flag', 'Baselines only: no verdict on Jev yet. '));
-    caution.append(`${run.assets} assets, ${run.folds} walk-forward folds, ${v.first_date} to ${v.last_date}. Trading cost ${run.cost_bps} basis points per trade. `);
+    if (!net) caution.appendChild(el('span', 'flag', 'Trading costs removed: a what-if view, not the experiment’s test. '));
+    caution.append(`${run.assets} assets, ${run.folds} walk-forward folds, ${v.first_date} to ${v.last_date}. `, net
+      ? `Trading cost ${run.cost_bps} basis points per trade. `
+      : `Trading cost set to zero; the test charges ${run.cost_bps} basis points per trade. `);
     caution.append(run.external_ran.length
       ? `External classifiers included: ${run.external_ran.join(', ')}.`
       : 'Jev has not been run, so no Jev strategy appears here.');
     if (run.hindsight) caution.append(' ' + run.hindsight);
-    if (v.thinned > 1) caution.append(` Lines show every ${v.thinned}th trading day; all statistics use every day.`);
+    if (v.thinned > 1) caution.append(` Lines show every ${ordinal(v.thinned)} trading day; all statistics use every day.`);
 
+    $('growth-title').textContent = net ? 'Growth of $1, net of costs' : 'Growth of $1, before trading costs';
+    $('forest-note').replaceChildren('Each strategy’s ', term(sharpeName),
+      ' minus buy and hold, with a 95% bootstrap interval. Right of zero is better. An interval that crosses zero means the difference could be chance.');
+    $('table-note').textContent = `Sorted by ${sharpeName}. Alpha and beta are measured against the market index. The last column repeats the backtest at a cost of 10 basis points per trade.`;
     $('growth-note').textContent = state.rule !== 'buy_names'
       ? `Each strategy holds its top ${run.held[state.rule]} of ${run.assets} assets by its own score, equally weighted and fully invested. It differs from buy and hold only in which assets it holds.${state.rule === 'rank_check' ? ' This concentrated version is a declared check, not the primary test.' : ''}`
       : `Each strategy holds only the assets its model labels BUY and keeps the rest in cash${run.risk_free === 'tbill' ? ' earning the Treasury bill rate' : ''}, so it is partly invested. Both buy-and-hold lines are fully invested.`;
@@ -558,15 +668,19 @@
     const best = tested.slice().sort((a, b) => (v.stats[b].sharpe ?? -9) - (v.stats[a].sharpe ?? -9))[0];
     const label = (id) => (v.strategies.find((s) => s.id === id) || {}).label || id;
     const invested = tested.length ? tested.reduce((sum, id) => sum + (v.stats[id].mean_exposure || 0), 0) / tested.length : null;
+    // A label or sub-line is a list of strings and terms.
     const tiles = [
-      ['Highest net Sharpe ratio among strategies', best ? num(v.stats[best].sharpe) : 'n/a', best ? label(best) : ''],
-      ['Equal-weight buy and hold', num((v.stats.always_buy || {}).sharpe), 'Net Sharpe ratio, same assets and costs'],
-      [`${run.market} buy and hold`, num((v.stats.market_buy_and_hold || {}).sharpe), 'Sharpe ratio, shown for context'],
-      ['Average share invested, strategies', pct(invested, 0), 'Buy and hold is fully invested'],
+      [['Highest ', term(sharpeName), ' among strategies'], best ? num(v.stats[best].sharpe) : 'n/a', [best ? label(best) : '']],
+      [['Equal-weight buy and hold'], num((v.stats.always_buy || {}).sharpe),
+        net ? [term('Net Sharpe ratio'), ', same assets and costs'] : [term('Sharpe ratio before costs'), ', same assets']],
+      [[`${run.market} buy and hold`], num((v.stats.market_buy_and_hold || {}).sharpe), ['Sharpe ratio, shown for context']],
+      [['Average share invested, strategies'], pct(invested, 0), ['Buy and hold is fully invested']],
     ];
     $('tiles').replaceChildren(...tiles.map(([a, b, c]) => {
-      const tile = el('div', 'tile');
-      tile.append(el('p', 'tile-label', a), el('p', 'tile-value', b), el('p', 'tile-sub', c));
+      const tile = el('div', 'tile'), top = el('p', 'tile-label'), sub = el('p', 'tile-sub');
+      top.append(...a);
+      sub.append(...c);
+      tile.append(top, el('p', 'tile-value', b), sub);
       return tile;
     }));
 
@@ -577,6 +691,8 @@
   function render() {
     drawControls();
     drawText();
+    // Keyboard focus and in-page jumps stop below the locked bar instead of underneath it.
+    document.documentElement.style.scrollPaddingTop = (document.querySelector('.topbar').offsetHeight + 8) + 'px';
     if (state.tab === 'models') { drawModels(); return; }
     drawLegend();
     drawLines($('growth'), 'growth', {
@@ -704,8 +820,8 @@
       ]),
       note(jevRan ? `Included here: ${ran.join(', ')}.` : 'No Jev result appears on the Backtests tab until its outputs are saved and a run includes them. Each arm exists in a zero-shot and a with-examples version.'));
 
-    // The Models filter also picks which strategy cards the report shows; the shared cards always stay.
-    const on = (...ids) => ids.some((id) => state.models.has(id));
+    // The Strategies filter also picks which strategy cards the report shows; the shared cards always stay.
+    const on = (...ids) => ids.some(groupShown);
     root.replaceChildren(intro, common, ...[
       [on('rule'), momCard], [on('rule'), maCard], [on('index_ml'), clsCard], [true, baseCard], [on('jev', 'jev_ml'), jevCard],
     ].filter(([show]) => show).map(([, node]) => node));

@@ -90,13 +90,21 @@ def test_local_backtest_page_is_self_contained(cfg, prices, tmp_path):
     groups = {s["id"]: s["group"] for s in view["strategies"]}
     assert groups["gbt"] == "index_ml" and groups["momentum_rule"] == "rule"
     assert groups["always_buy"] is None and groups["stratified_random"] is None   # always shown
-    assert [(g["id"], g["present"]) for g in payload["model_groups"]] == [
-        ("index_ml", True), ("rule", True), ("jev_ml", False), ("jev", False)]
+    assert [(f["id"], f["present"]) for f in payload["filters"]] == [
+        ("all", True), ("ml", True), ("jev_related", False), ("jev_hold", False)]
     assert all(len(v) == len(view["dates"]) for v in view["growth"].values())
     # The drawn growth line ends at the same value as the stored statistic.
     stored = out["metrics"]["segments"]["dev"]["5"]["trading"]["rank"]["gbt"]["cumulative_net_return"]
     assert view["growth"]["gbt"][-1] - 1 == pytest.approx(stored, abs=1e-4)
     assert len(view["diffs"]) == 5 and view["power"]["mde_80"] > view["power"]["half_width"] > 0
+
+    # With costs switched off the line ends at the stored gross return, and no strategy returns less than with costs.
+    free = view["free"]
+    gross = out["metrics"]["segments"]["dev"]["5"]["trading"]["rank"]["gbt"]["cumulative_gross_return"]
+    assert free["growth"]["gbt"][-1] - 1 == pytest.approx(gross, abs=1e-4)
+    assert all(free["stats"][m]["cumulative_net_return"] >= view["stats"][m]["cumulative_net_return"] - 1e-12
+               for m in view["stats"])
+    assert [d["id"] for d in free["diffs"]] == [d["id"] for d in view["diffs"]] and free["power"]["half_width"] > 0
 
     # Holdings are shares of the portfolio: a fully invested ranking rule sums to 100%.
     held = view["holdings"]
