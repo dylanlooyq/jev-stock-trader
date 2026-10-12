@@ -5,7 +5,9 @@ network access. Every number comes from the run's saved metrics and daily return
 """
 from __future__ import annotations
 
+import ast
 import json
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
@@ -22,12 +24,16 @@ LABELS = {
     "stratified_random": "Random signals", "majority": "Always HOLD",
     "always_buy": "Equal-weight buy and hold", "market_buy_and_hold": "Market index buy and hold",
 }
-KINDS = {"classifier": "Model", "rule": "Rule", "baseline": "Baseline"}
+KINDS = {"baseline": "Baseline"}
+# The "Models" filter on the page. Benchmarks and no-skill baselines belong to no group and always stay on screen.
+MODEL_GROUPS = {"index_ml": "Index ML Classifier", "rule": "Rule Based",
+                "jev_ml": "ML Classifier with Jev", "jev": "Jev"}
 PASSIVE = ("always_buy", "market_buy_and_hold")
 MAX_POINTS = 900   # per line; longer series are thinned for drawing only
 ASSET_NAMES = {
     "IVV": "S&P 500", "GLD": "Gold", "BTC-USD": "Bitcoin", "TLT": "Long Treasuries", "EFA": "Developed stocks",
     "EEM": "Emerging stocks", "USO": "Crude oil", "VNQ": "Real estate", "UUP": "US dollar", "HYG": "High-yield bonds",
+    "GOOGL": "Alphabet", "PG": "Procter & Gamble", "IBM": "IBM", "CVX": "Chevron", "WFC": "Wells Fargo", "CSCO": "Cisco",
 }
 
 
@@ -53,12 +59,25 @@ def _holdings(preds: pd.DataFrame, cfg: dict, rule: str, tickers: list[str]) -> 
     return out
 
 
+def _group(model: str, family: str) -> str | None:
+    """Which "Models" filter group a strategy belongs to; None for benchmarks and baselines."""
+    if family == "classifier":
+        return "index_ml"
+    if family == "rule":
+        return "rule"
+    if family == "jev":   # other registered providers are reserved and have no group yet
+        return "jev" if model.startswith("jev_signal_") else "jev_ml"
+    return None
+
+
 def _strategy(model: str, families: dict, rule: str) -> dict:
     family = families.get(model, "")
     if model in PASSIVE:
-        return {"id": model, "label": LABELS[model], "kind": "Benchmark", "chart": True}
+        return {"id": model, "label": LABELS[model], "kind": "Benchmark", "group": None, "chart": True}
+    group = _group(model, family)
     if family in PROVIDERS:
-        return {"id": model, "label": describe_arm(model), "kind": PROVIDERS[family]["label"], "chart": True}
+        return {"id": model, "label": describe_arm(model), "group": group, "chart": True,
+                "kind": MODEL_GROUPS[group] if group else PROVIDERS[family]["label"]}
     label, chart = LABELS.get(model, model), True
     ranked = rule != "buy_names"
     if ranked and model == "stratified_random":
@@ -67,7 +86,57 @@ def _strategy(model: str, families: dict, rule: str) -> dict:
         # Under a ranking rule it is identical to random selection; under BUY-names it never trades.
         chart = False
         label = "Always HOLD (same as random selection)" if ranked else "Always HOLD (never trades)"
-    return {"id": model, "label": label, "kind": KINDS.get(family, family), "chart": chart}
+    return {"id": model, "label": label, "group": group, "chart": chart,
+            "kind": MODEL_GROUPS[group] if group else KINDS.get(family, family)}
+
+
+def _setting_label(model: str, params: dict) -> str:
+    if model == "momentum_rule":
+        return f"{int(params['lookback'])}-day return, dead band {float(params['band']):g}"
+    if model == "ma_cross_rule":
+        return f"{int(params['fast'])}/{int(params['slow'])}-day averages" + (", price must confirm" if params["confirm"] else "")
+    return str(params)
+
+
+def _grid_summary(grid: list[dict]) -> dict:
+    """Distinct values of each tuned setting, in the order they first appear."""
+    out: dict[str, list] = {}
+    for config in grid:
+        for key, value in config.items():
+            seen = out.setdefault(key, [])
+            if value not in seen:
+                seen.append(value)
+    return {k: ["none" if v is None else v for v in vs] for k, vs in out.items()}
+
+
+def _models_info(run_dir: Path, cfg: dict, horizons: list[int]) -> dict:
+    """Settings of every model, and which rule settings validation picked in each fold."""
+    fit_path = run_dir / "fit_log.csv"
+    fit = pd.read_csv(fit_path) if fit_path.exists() else None
+    models = cfg["models"]
+    rules = {}
+    for model in ("momentum_rule", "ma_cross_rule"):
+        grid = models[model]["grid"]
+        chosen = {}
+        if fit is not None:
+            for h in horizons:
+                part = fit[(fit["model"] == model) & (fit["horizon"] == h) & fit["params"].notna()]
+                counts = Counter(_setting_label(model, ast.literal_eval(p)) for p in part["params"])
+                chosen[str(h)] = {"folds": int(len(part)), "counts": [[k, v] for k, v in counts.most_common()]}
+        rules[model] = {"grid": [_setting_label(model, g) for g in grid], "chosen": chosen}
+    bt, label = cfg["backtest"], cfg["task"]["label"]
+    return {
+        "rules": rules,
+        "classifiers": {m: {"n_configs": len(models[m]["grid"]), "grid": _grid_summary(models[m]["grid"])}
+                        for m in ("logreg", "random_forest", "gbt")},
+        "portfolio": {
+            "assets": len(cfg["data"]["tickers"]), "held": names_held(cfg, "rank"),
+            "held_check": names_held(cfg, "rank_check") if bt.get("rank_check_fraction") is not None else None,
+            "cost_bps": bt["cost_bps_per_side"], "max_weight": bt["max_weight"],
+            "label_k": label["k"], "vol_window": label["vol_window"], "horizons": horizons,
+            "validation_months": cfg["splits"]["validation_months"], "test_months": cfg["splits"]["test_months"],
+        },
+    }
 
 
 def build_payload(run_dir: Path) -> dict:
@@ -124,7 +193,9 @@ def build_payload(run_dir: Path) -> dict:
     bt, n_assets = cfg["backtest"], len(cfg["data"]["tickers"])
     rule_labels = {r: ("BUY names only" if r == "buy_names" else f"Top {names_held(cfg, r) or '?'} of {n_assets} by score")
                    for r in rules}
+    present = {s["group"] for v in views.values() for s in v["strategies"]}
     return {
+        "model_groups": [{"id": g, "label": label, "present": g in present} for g, label in MODEL_GROUPS.items()],
         "run": {
             "name": manifest["run_name"], "smoke": cfg["experiment_id"] == "smoke",
             "full_window": bool(manifest["holdout_unlocked"]), "generated": manifest["finished_at_utc"],
@@ -140,6 +211,7 @@ def build_payload(run_dir: Path) -> dict:
         "tickers": [{"id": t, "name": ASSET_NAMES.get(t, t)} for t in tickers],
         "defaults": {"segment": segments[0], "rule": bt["primary_rule"], "horizon": cfg["task"]["primary_horizon"]},
         "views": views,
+        "models": _models_info(run_dir, cfg, horizons),
     }
 
 

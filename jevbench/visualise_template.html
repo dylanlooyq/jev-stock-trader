@@ -5,8 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Backtests</title>
 <style>
-  /* Layout: one column. Caution and takeaway first, three switches, four headline
-     figures, then growth, drawdown, the interval chart and the full table. */
+  /* Layout: one column. A locked bar (title and tabs) stays on screen; below it the caution,
+     the filters, the takeaway, four headline figures, then growth, drawdown, the interval
+     chart and the full table. The Models and strategies tab is the report half. */
   :root {
     color-scheme: light;
     --page: #f3f2ee; --surface: #fcfcfb; --border: #e2e0da; --grid: #eae8e2; --axis: #b9b7ae;
@@ -27,26 +28,32 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--page); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.45; }
-  .page { max-width: 72rem; margin-inline: auto; padding-inline: clamp(16px, 4vw, 40px); padding-block: 32px 56px;
+  .page { max-width: 72rem; margin-inline: auto; padding-inline: clamp(16px, 4vw, 40px); padding-block: 0 56px;
     display: flex; flex-direction: column; gap: 24px; }
-  h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: clamp(1.7rem, 3.4vw, 2.3rem); line-height: 1.15; text-wrap: balance; }
+  h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: clamp(1.35rem, 2.6vw, 1.75rem); line-height: 1.2; }
   h2 { margin: 0; font-size: 1.02rem; font-weight: 600; }
   p { margin: 0; }
-  .head { display: flex; flex-direction: column; gap: 10px; }
+  .topbar { position: sticky; top: 0; z-index: 10; background: var(--page); padding-top: 18px;
+    display: flex; flex-direction: column; gap: 8px; }
   .takeaway { max-width: 70ch; }
   .caution { max-width: 78ch; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
     font-size: .87rem; color: var(--text-2); }
   .flag { color: var(--warn); font-weight: 600; }
   .num { font-variant-numeric: tabular-nums; }
 
-  .controls { display: flex; flex-wrap: wrap; gap: 12px 28px; }
-  .control { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-  .control-label { color: var(--muted); font-size: .82rem; }
+  .controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; padding: 12px 16px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  .control { display: flex; flex-direction: column; gap: 4px; }
+  .control[hidden] { display: none; }
+  .control-label { color: var(--muted); font-size: .78rem; }
   .seg { display: flex; flex-wrap: wrap; gap: 4px; }
+  .select { font: inherit; font-size: .84rem; padding: 5px 28px 5px 10px; cursor: pointer; color: var(--text);
+    border: 1px solid var(--border); border-radius: 7px; background-color: var(--page); min-width: 9rem; }
   .btn { font: inherit; font-size: .84rem; padding: 5px 11px; cursor: pointer; border: 1px solid var(--border);
-    border-radius: 7px; background: var(--surface); color: var(--text); }
+    border-radius: 7px; background: var(--page); color: var(--text); }
   .btn[aria-pressed="true"] { background: var(--text); color: var(--page); border-color: var(--text); }
-  .btn:focus-visible, .key:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn:focus-visible, .key:focus-visible, .select:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 14px; }
   .tile, .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px;
@@ -88,17 +95,44 @@
   .assets { display: flex; flex-wrap: wrap; gap: 2px 16px; font-size: .8rem; color: var(--text-2); }
   .assets b { font-weight: 600; color: var(--text); }
   .foot { color: var(--muted); font-size: .8rem; max-width: 78ch; }
+
+  .stack { display: flex; flex-direction: column; gap: 24px; }
+  .stack[hidden] { display: none; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); }
+  .takeaway:empty { display: none; }
+  .tab { font: inherit; font-size: .92rem; padding: 8px 14px; cursor: pointer; background: none; color: var(--muted);
+    border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--text); font-weight: 600; }
+  .tab:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  .prose { display: flex; flex-direction: column; gap: 8px; max-width: 78ch; }
+  .prose p { color: var(--text-2); }
+  .prose b { color: var(--text); font-weight: 600; }
+  .steps { margin: 0; padding-left: 1.2rem; color: var(--text-2); display: flex; flex-direction: column; gap: 4px; max-width: 78ch; }
+  .formula { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .84rem; background: var(--page);
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: var(--text); overflow-x: auto; white-space: pre; }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border);
+    color: var(--text-2); align-self: flex-start; }
+  .pill.warn { color: var(--warn); border-color: var(--warn); }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 14px; }
+  .subtle { color: var(--muted); font-size: .82rem; }
+  #models td, #models th { white-space: normal; }
 </style>
 </head>
 <body>
 <main class="page">
-  <header class="head">
+  <header class="topbar">
     <h1 id="title">Backtests</h1>
-    <p class="takeaway" id="takeaway"></p>
-    <p class="caution" id="caution"></p>
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" id="tab-backtests" aria-selected="true" aria-controls="view-backtests">Backtests</button>
+      <button class="tab" role="tab" id="tab-models" aria-selected="false" aria-controls="view-models">Models and strategies</button>
+    </div>
   </header>
 
-  <div class="controls" id="controls"></div>
+  <p class="caution" id="caution"></p>
+  <div class="controls" id="controls" role="group" aria-label="Filters"></div>
+
+  <div class="stack" id="view-backtests" role="tabpanel" aria-labelledby="tab-backtests">
+  <p class="takeaway" id="takeaway"></p>
 
   <section class="tiles" id="tiles"></section>
 
@@ -135,6 +169,9 @@
   </section>
 
   <p class="foot" id="foot"></p>
+  </div>
+
+  <div class="stack" id="view-models" role="tabpanel" aria-labelledby="tab-models" hidden></div>
 </main>
 
 <script>
@@ -142,7 +179,11 @@
   const DATA = /*__DATA__*/null;
   const NS = 'http://www.w3.org/2000/svg';
   const $ = (id) => document.getElementById(id);
-  const state = { segment: DATA.defaults.segment, rule: DATA.defaults.rule, horizon: DATA.defaults.horizon, hidden: new Set() };
+  const GROUPS = DATA.model_groups.filter((g) => g.present);
+  const state = {
+    segment: DATA.defaults.segment, rule: DATA.defaults.rule, horizon: DATA.defaults.horizon, hidden: new Set(),
+    tab: 'backtests', models: new Set(GROUPS.map((g) => g.id)),
+  };
 
   const SEGMENTS = { all: 'All folds', dev: 'Before the final two years', holdout: 'Final two years' };
   const RULES = DATA.rule_labels;
@@ -188,6 +229,9 @@
   }
 
   const view = () => DATA.views[`${state.segment}|${state.rule}|${state.horizon}`];
+  // The Models filter. Benchmarks and no-skill baselines have no group and always stay.
+  const inFilter = (s) => !s.group || state.models.has(s.group);
+  const shownStrategies = () => view().strategies.filter(inFilter);
 
   function niceTicks(lo, hi, count) {
     const span = hi - lo || Math.abs(hi) || 1;
@@ -244,7 +288,7 @@
 
   function drawLines(box, field, opt) {
     const v = view();
-    const shown = v.strategies.filter((s) => s.chart && !state.hidden.has(s.id))
+    const shown = shownStrategies().filter((s) => s.chart && !state.hidden.has(s.id))
       .map((s) => ({ ...s, style: styleOf(s), values: v[field][s.id] }))
       .sort((a, b) => Number(a.kind === 'Benchmark') - Number(b.kind === 'Benchmark'));   // benchmarks on top
     const W = box.clientWidth, H = 320;
@@ -310,7 +354,7 @@
 
   function drawForest(box) {
     const v = view();
-    const byId = new Map(v.strategies.map((s) => [s.id, s]));
+    const byId = new Map(shownStrategies().map((s) => [s.id, s]));
     const rows = v.diffs.filter((r) => byId.has(r.id)).slice().sort((a, b) => b.diff - a.diff);
     const W = box.clientWidth;
     box.replaceChildren();
@@ -359,8 +403,7 @@
   }
 
   function drawLegend() {
-    const v = view();
-    $('legend').replaceChildren(...v.strategies.filter((s) => s.chart).map((s) => {
+    $('legend').replaceChildren(...shownStrategies().filter((s) => s.chart).map((s) => {
       const key = el('button', 'key');
       key.type = 'button';
       key.title = 'Show or hide this line';
@@ -382,7 +425,7 @@
     cols.forEach(([label, cls]) => head.appendChild(el('th', cls, label)));
     const thead = el('thead'); thead.appendChild(head);
     const tbody = el('tbody');
-    v.strategies.slice().sort((a, b) => (v.stats[b.id].sharpe ?? -9) - (v.stats[a.id].sharpe ?? -9)).forEach((s) => {
+    shownStrategies().sort((a, b) => (v.stats[b.id].sharpe ?? -9) - (v.stats[a.id].sharpe ?? -9)).forEach((s) => {
       const t = v.stats[s.id];
       const tr = el('tr', s.kind === 'Benchmark' ? 'bench' : null);
       const nameCell = el('td', 'left'), name = el('span', 'name');
@@ -406,7 +449,7 @@
       item.append(el('b', null, t.id), ' ' + t.name);
       return item;
     }));
-    const rows = v.strategies.filter((s) => v.holdings[s.id] && (s.chart || s.id === 'always_buy'));
+    const rows = shownStrategies().filter((s) => v.holdings[s.id] && (s.chart || s.id === 'always_buy'));
     const peak = Math.max(1, ...rows.flatMap((s) => v.holdings[s.id]));
     const head = el('tr');
     head.appendChild(el('th', 'left', 'Strategy'));
@@ -430,33 +473,62 @@
     $('holdings').replaceChildren(thead, tbody);
   }
 
-  function drawControls() {
-    const groups = [
+  // Filters are built once and then only synced, so a dropdown keeps keyboard focus while it changes the page.
+  // Period, portfolio rule and holding period pick exactly one value; Models can pick several.
+  const syncs = [];
+  function buildControls() {
+    const field = (label, forId, control, onlyBacktests) => {
+      const wrap = el('div', 'control');
+      const lab = el('label', 'control-label', label);
+      if (forId) lab.htmlFor = forId;
+      else lab.id = 'lbl-' + label.toLowerCase();
+      wrap.append(lab, control);
+      if (onlyBacktests) syncs.push(() => { wrap.hidden = state.tab !== 'backtests'; });
+      return wrap;
+    };
+    const single = [
       ['Period', 'segment', DATA.segments.map((s) => [s, SEGMENTS[s] || s])],
       ['Portfolio rule', 'rule', DATA.rules.map((r) => [r, RULES[r] || r])],
       ['Holding period', 'horizon', DATA.horizons.map((h) => [h, h === 1 ? '1 day' : `${h} days`])],
     ].filter(([, , options]) => options.length > 1);
-    $('controls').replaceChildren(...groups.map(([label, key, options]) => {
-      const wrap = el('div', 'control');
-      const seg = el('div', 'seg');
-      seg.setAttribute('role', 'group');
-      seg.setAttribute('aria-label', label);
-      options.forEach(([value, text]) => {
-        const b = el('button', 'btn', text);
-        b.type = 'button';
-        b.setAttribute('aria-pressed', String(state[key] === value));
-        b.addEventListener('click', () => { state[key] = value; render(); });
-        seg.appendChild(b);
+    const nodes = single.map(([label, key, options]) => {
+      const select = el('select', 'select');
+      select.id = 'filter-' + key;
+      options.forEach(([value, text]) => { const o = el('option', null, text); o.value = String(value); select.appendChild(o); });
+      select.addEventListener('change', () => {
+        state[key] = typeof options[0][0] === 'number' ? Number(select.value) : select.value;
+        render();
       });
-      wrap.append(el('span', 'control-label', label), seg);
-      return wrap;
-    }));
+      syncs.push(() => { select.value = String(state[key]); });
+      return field(label, select.id, select, true);
+    });
+
+    const seg = el('div', 'seg');
+    seg.setAttribute('role', 'group');
+    seg.setAttribute('aria-labelledby', 'lbl-models');
+    DATA.model_groups.forEach((g) => {
+      const b = el('button', 'btn', g.label);
+      b.type = 'button';
+      if (!g.present) { b.disabled = true; b.title = 'Not in this run'; }
+      b.addEventListener('click', () => {
+        if (!state.models.has(g.id)) state.models.add(g.id);
+        else if (state.models.size > 1) state.models.delete(g.id);   // keep at least one group on screen
+        render();
+      });
+      syncs.push(() => { b.setAttribute('aria-pressed', String(state.models.has(g.id))); });
+      seg.appendChild(b);
+    });
+    nodes.push(field('Models', null, seg, false));
+    $('controls').replaceChildren(...nodes);
   }
+  const drawControls = () => syncs.forEach((sync) => sync());
 
   function drawText() {
     const v = view(), run = DATA.run;
-    const tested = v.diffs.map((d) => d.id);
-    const reliable = v.diffs.filter((d) => d.lo > 0 || d.hi < 0).length;
+    const kept = new Set(shownStrategies().map((s) => s.id));
+    const diffs = v.diffs.filter((d) => kept.has(d.id));
+    const tested = diffs.map((d) => d.id);
+    const reliable = diffs.filter((d) => d.lo > 0 || d.hi < 0).length;
     $('title').textContent = `Backtests: ${run.name}`;
     document.title = `Backtests: ${run.name}`;
 
@@ -505,6 +577,7 @@
   function render() {
     drawControls();
     drawText();
+    if (state.tab === 'models') { drawModels(); return; }
     drawLegend();
     drawLines($('growth'), 'growth', {
       base: 1, label: 'Growth of one dollar by strategy', log: true,
@@ -518,6 +591,137 @@
     drawHoldings();
     drawTable();
   }
+
+  // ---- Models and strategies tab: static explanations, with settings read from the run.
+  function drawModels() {
+    const M = DATA.models, P = M.portfolio, root = $('view-models');
+    const card = (title, ...nodes) => { const c = el('section', 'card'); c.append(el('h2', null, title), ...nodes); return c; };
+    const bold = (t) => el('b', null, t);
+    const para = (...parts) => { const n = el('p'); parts.forEach((x) => n.append(x)); return n; };
+    const prose = (...paras) => { const d = el('div', 'prose'); paras.forEach((p) => d.appendChild(p)); return d; };
+    const list = (items) => { const o = el('ol', 'steps'); items.forEach((i) => o.appendChild(el('li', null, i))); return o; };
+    const formula = (t) => el('div', 'formula', t);
+    const pill = (t, warn) => el('span', warn ? 'pill warn' : 'pill', t);
+    const note = (t) => el('p', 'subtle', t);
+    const table = (head, rows) => {
+      const t = el('table'), tr = el('tr');
+      head.forEach((h) => tr.appendChild(el('th', 'left', h)));
+      const thead = el('thead'); thead.appendChild(tr);
+      const tbody = el('tbody');
+      rows.forEach((r) => { const row = el('tr'); r.forEach((c, i) => row.appendChild(el('td', 'left', c))); tbody.appendChild(row); });
+      t.append(thead, tbody);
+      const w = el('div', 'table-wrap'); w.appendChild(t); return w;
+    };
+    const chosenTable = (info) => {
+      const hs = DATA.horizons;
+      const labels = [...new Set(hs.flatMap((h) => ((info.chosen[h] || {}).counts || []).map((c) => c[0])))];
+      if (!labels.length) return note('No fit log was saved with this run, so the settings picked in each fold are not shown.');
+      const rows = labels.map((l) => [l, ...hs.map((h) => {
+        const hit = ((info.chosen[h] || {}).counts || []).find((c) => c[0] === l);
+        return hit ? `${hit[1]} of ${info.chosen[h].folds}` : '0';
+      })]);
+      return table(['Setting picked by validation', ...hs.map((h) => `${h}-day horizon (folds)`)], rows);
+    };
+    const share = (info, test) => {
+      let hit = 0, all = 0;
+      Object.values(info.chosen).forEach((c) => c.counts.forEach(([l, k]) => { all += k; if (test(l)) hit += k; }));
+      return all ? [hit, all] : null;
+    };
+    const ran = DATA.run.external_ran || [];
+    const held = P.held, n = P.assets;
+
+    const intro = card('How to read this tab',
+      prose(para('Every strategy on the Backtests tab answers one question for each asset on each day: ',
+        bold('will the price rise, fall or stay flat over the next few days?'),
+        ' The strategies differ only in how they answer. Their answers are then turned into a portfolio in the same way for all of them, so differences in results come from the signal, not from the trading.')));
+
+    const common = card('What every strategy shares',
+      list([
+        `After each market close, a strategy scores all ${n} assets (or calls each one BUY, HOLD or SELL).`,
+        `Primary portfolio: hold the top ${held} of ${n} assets by score, equally weighted and fully invested. Check version: top ${P.held_check == null ? 'n/a' : P.held_check}. Alternative, "BUY names only": hold each asset called BUY in its own fixed slot of ${pct(P.max_weight, 1)} (1 of ${n}), whatever the other assets are doing, and keep the rest in cash earning the Treasury bill rate.`,
+        'Trades happen at the next day’s open. A position is held for the horizon (1, 5 or 20 trading days), with capital split into one tranche per day so only a fraction of the book turns over each day.',
+        `Cost is ${P.cost_bps} basis points per unit traded. Sharpe ratios are measured in excess of the Treasury bill rate.`,
+        `What counts as BUY: the price from the next open to the end of the horizon rises by more than ${P.label_k} times the asset’s typical move (its ${P.vol_window}-day daily volatility scaled to the horizon). SELL is the mirror image, HOLD is anything in between.`,
+        `Tuned strategies choose their settings on the ${P.validation_months} months before each test year (best macro-F1, which averages how well BUY, HOLD and SELL are each recognised), refit on training plus validation, then predict the next ${P.test_months} months. They never see the test year.`,
+      ]),
+      note(`In the top-${held} portfolio only the ranking matters. A classifier ranks by P(BUY) minus P(SELL). A rule ranks by its own strength measure, described below.`));
+
+    const mom = M.rules.momentum_rule, ma = M.rules.ma_cross_rule;
+    const momBand = share(mom, (l) => l.includes('band 0.5'));
+    const maConf = share(ma, (l) => l.includes('must confirm'));
+
+    const momCard = card('Momentum rule', pill('Rule, no learning'),
+      prose(para(bold('Idea. '), 'Assets that have risen lately tend to keep rising, and assets that have fallen tend to keep falling. Buy the winners, avoid the losers.')),
+      formula('strength = return over the last L days / (daily volatility over 60 days x sqrt(L))\nBUY  if strength >  band\nSELL if strength < -band\nHOLD otherwise'),
+      prose(
+        para(bold('Why divide by volatility. '), 'Crude oil moves several times more than a Treasury bond fund. Dividing by the asset’s own typical move puts a 10% gain in oil and a 2% gain in bonds on a comparable footing.'),
+        para(bold('Dead band. '), `A band of 0.5 means "do nothing unless the move is at least half a typical move". This is the only place HOLD comes from. In the top-${held} portfolio the band has no effect on which assets are held, because assets are simply ranked by strength. It still matters for the validation score that picks the lookback, and for the BUY-names-only portfolio, which holds an asset exactly when its strength is above the band.`),
+        para(bold('Settings tried. '), `Lookback 20, 60, 120 or 250 days, band 0 or 0.5: ${mom.grid.length} combinations, scored on the validation year.`)),
+      chosenTable(mom),
+      momBand ? note(`Validation picked band 0.5 in ${momBand[0]} of ${momBand[1]} fits. HOLD is the most common outcome, so a rule that is allowed to say HOLD scores better on macro-F1, whether or not that helps returns.`) : el('span'),
+      prose(para(bold('Weaknesses. '), 'No learning from the labels beyond choosing one of the eight settings. Short lookbacks trade often and pay more costs. Momentum can reverse sharply, and a setting picked on one year may suit that year only.')));
+
+    const maCard = card('Moving-average rule', pill('Rule, no learning'),
+      prose(para(bold('Idea. '), 'A short-term average of price (fast) rising above a long-term one (slow) signals an uptrend, and falling below it signals a downtrend. It is the classic trend-following rule.')),
+      formula('BUY  if fast average > slow average\nSELL if fast average < slow average\n\nWith "price must confirm":\nBUY  only if price is also above the fast average\nSELL only if price is also below the fast average\nHOLD otherwise (the trend and today’s price disagree)'),
+      prose(
+        para(bold('Strength used for ranking. '), 'The gap between the fast and slow averages as a share of price: positive when the fast average is higher. The more clearly an asset is in an uptrend, the higher it ranks.'),
+        para(bold('Settings tried. '), `Fast/slow pairs 20/50, 50/200 and 20/200 days, each with and without the price confirmation: ${ma.grid.length} combinations, scored on the validation year.`)),
+      chosenTable(ma),
+      maConf ? note(`Validation picked price confirmation in ${maConf[0]} of ${maConf[1]} fits, again because it allows HOLD calls.`) : el('span'),
+      prose(
+        para(bold('Caution on what it holds. '), 'The gap is not scaled by volatility, so volatile assets such as oil and single stocks tend to show bigger gaps and rank higher than bond or currency funds. Check the holdings table on the Backtests tab to see where this rule actually puts its money.'),
+        para(bold('Weaknesses. '), 'Averages lag the price, so signals arrive late and whipsaw in sideways markets. The 200-day average needs a year of history.')));
+
+    const g = M.classifiers;
+    const grid = (c) => Object.entries(c.grid).map(([k, v]) => `${k}: ${v.join(', ')}`).join('; ');
+    const clsCard = card('Machine-learning classifiers', pill('Learn from labels'),
+      prose(para('All three read the same 27 price and volume features (returns over several horizons, volatility, RSI, MACD, distance from moving averages and the 52-week high, volume, market context, and the asset’s rank among the other assets that day). They output a probability for SELL, HOLD and BUY. Each tries ', bold(`${g.logreg.n_configs} settings per fold`), ', keeps the best on validation macro-F1, and is refit on training plus validation.')),
+      table(['Model', 'What it is', 'Settings tried'], [
+        ['Logistic regression', 'A linear model on standardised features. The simplest learner: each feature pushes the odds of BUY, HOLD or SELL up or down by a fixed amount.', grid(g.logreg)],
+        ['Random forest', 'Many decision trees, each fitted on a different random sample, voting together. Captures interactions and non-linear effects; trees are kept shallow with large leaves to limit overfitting.', grid(g.random_forest)],
+        ['Gradient-boosted trees', 'Small trees added one at a time, each correcting the mistakes of the last (LightGBM). Usually the strongest of the three on tabular data, and also the engine used for the Jev "head" arms.', grid(g.gbt)],
+      ]),
+      note('Scored by P(BUY) minus P(SELL) in the ranking portfolio. Check the classification tables in the report for how far above no-skill their macro-F1 is.'));
+
+    const baseCard = card('Baselines and benchmarks', pill('Reference points'),
+      table(['Strategy', 'What it does', 'Why it is there'], [
+        ['Random signals', 'Draws BUY, HOLD or SELL at random with the training class frequencies. In the ranking portfolio it picks assets at random.', 'The no-skill line. A real signal should beat it.'],
+        ['Always HOLD', 'Predicts the most common class every time. It never trades under BUY-names-only; under ranking it ties on every asset and is the same as random selection.', 'Shows what a model that learned nothing but the class mix would do.'],
+        ['Equal-weight buy and hold', `Owns all ${n} assets in equal parts and never trades.`, 'The benchmark every strategy must beat. The ranking portfolio differs from it only in which assets it holds.'],
+        ['Market index buy and hold', `Owns ${DATA.run.market} only.`, 'Context only.'],
+      ]));
+
+    const jevRan = ran.length > 0;
+    const jevCard = card('Jev arms', pill(jevRan ? 'Included in this run' : 'Not in this run', !jevRan),
+      prose(
+        para('Jev is a hosted model that reads a text description of an asset on a given day and answers the same BUY, HOLD or SELL question, with probabilities. It is given the same 27 readings as text, with no ticker, no date and no price level.'),
+        para(bold('Zero-shot '), 'sends the readings and the question only. ', bold('With examples '), 'adds 12 earlier snapshots with what happened next (4 each of BUY, HOLD and SELL), drawn only from outcomes already known at the time.')),
+      table(['Arm', 'What it does', 'What it is compared with'], [
+        ['Jev signal', 'Uses Jev’s own probabilities directly. Nothing is learned from our labels.', 'The reference classifier and buy and hold'],
+        ['Jev head', 'Trains gradient-boosted trees on Jev’s outputs alone.', 'Shows how much is in Jev’s outputs once they are fitted to our labels'],
+        ['Jev plus controlled features', 'Trains gradient-boosted trees on the 27 features plus Jev’s outputs.', 'The same model without Jev: does Jev add anything?'],
+      ]),
+      note(jevRan ? `Included here: ${ran.join(', ')}.` : 'No Jev result appears on the Backtests tab until its outputs are saved and a run includes them. Each arm exists in a zero-shot and a with-examples version.'));
+
+    // The Models filter also picks which strategy cards the report shows; the shared cards always stay.
+    const on = (...ids) => ids.some((id) => state.models.has(id));
+    root.replaceChildren(intro, common, ...[
+      [on('rule'), momCard], [on('rule'), maCard], [on('index_ml'), clsCard], [true, baseCard], [on('jev', 'jev_ml'), jevCard],
+    ].filter(([show]) => show).map(([, node]) => node));
+  }
+
+  const TABS = ['backtests', 'models'];
+  function showTab(name) {
+    state.tab = name;
+    TABS.forEach((t) => {
+      $('view-' + t).hidden = t !== name;
+      $('tab-' + t).setAttribute('aria-selected', String(t === name));
+    });
+    render();
+  }
+  TABS.forEach((t) => $('tab-' + t).addEventListener('click', () => showTab(t)));
+  buildControls();
 
   let pending = 0;
   window.addEventListener('resize', () => { cancelAnimationFrame(pending); pending = requestAnimationFrame(render); });

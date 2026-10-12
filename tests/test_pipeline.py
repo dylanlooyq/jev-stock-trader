@@ -87,6 +87,11 @@ def test_local_backtest_page_is_self_contained(cfg, prices, tmp_path):
                                       "buy_names": "BUY names only"}
     view = payload["views"]["dev|rank|5"]
     assert {s["id"] for s in view["strategies"]} == BASELINES | {"always_buy", "market_buy_and_hold"}
+    groups = {s["id"]: s["group"] for s in view["strategies"]}
+    assert groups["gbt"] == "index_ml" and groups["momentum_rule"] == "rule"
+    assert groups["always_buy"] is None and groups["stratified_random"] is None   # always shown
+    assert [(g["id"], g["present"]) for g in payload["model_groups"]] == [
+        ("index_ml", True), ("rule", True), ("jev_ml", False), ("jev", False)]
     assert all(len(v) == len(view["dates"]) for v in view["growth"].values())
     # The drawn growth line ends at the same value as the stored statistic.
     stored = out["metrics"]["segments"]["dev"]["5"]["trading"]["rank"]["gbt"]["cumulative_net_return"]
