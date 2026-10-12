@@ -11,9 +11,7 @@ __pycache__/
 .venv/
 venv/
 
-# Local data and caches (large, and vendor data should not be redistributed)
+# Local data and caches (large, and vendor data should not be redistributed).
+# Per-run outputs under results/, parquet included, are tracked.
 data/
 cache/
-
-# Per-observation outputs are large; metrics, manifests and reports are kept
-results/**/*.parquet
