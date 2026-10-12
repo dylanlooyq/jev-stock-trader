@@ -281,10 +281,10 @@
     }
     return freeViews.get(key);
   }
-  // The Strategies filter. Benchmarks and no-skill baselines have no group: they stay unless the choice keeps only some.
+  // The Strategies filter. Benchmarks and no-skill baselines have no group and always stay.
   const filter = () => DATA.filters.find((f) => f.id === state.filter);
   const groupShown = (g) => { const f = filter(); return !f.groups || f.groups.includes(g); };
-  const inFilter = (s) => (s.group ? groupShown(s.group) : !filter().keep || filter().keep.includes(s.id));
+  const inFilter = (s) => !s.group || groupShown(s.group);
   const shownStrategies = () => view().strategies.filter(inFilter);
 
   // A term with a popup explanation, on hover, keyboard focus or tap. Escape or a tap elsewhere closes it.
@@ -782,7 +782,7 @@
           v.power ? ` A run this size would usually miss a true Sharpe difference smaller than about ${num(v.power.mde_80)}, so it cannot rule out a small edge.` : '')));
     }
 
-    // The heading is a button: its arrow folds the card down to this one line. The choice is remembered on this device.
+    // The heading is a button: its arrow opens the card, which starts folded down to this one line. The choice is remembered on this device.
     const fold = el('button', 'fold');
     fold.type = 'button';
     fold.setAttribute('aria-controls', 'about-body');
@@ -803,7 +803,7 @@
     });
     let saved = null;
     try { saved = localStorage.getItem('about-open'); } catch (e) { /* as above */ }
-    setOpen(saved !== 'false');
+    setOpen(saved === 'true');
     $('about').replaceChildren(heading, left);
   }
 

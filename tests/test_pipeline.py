@@ -92,7 +92,7 @@ def test_local_backtest_page_is_self_contained(cfg, prices, tmp_path):
     assert groups["gbt"] == "index_ml" and groups["momentum_rule"] == "rule"
     assert groups["always_buy"] is None and groups["stratified_random"] is None   # always shown
     assert [(f["id"], f["present"]) for f in payload["filters"]] == [
-        ("all", True), ("ml", True), ("jev_related", False), ("jev_hold", False)]
+        ("all", True), ("ml", True), ("jev_related", False)]
     assert all(len(v) == len(view["dates"]) for v in view["growth"].values())
     # The drawn growth line ends at the same value as the stored statistic.
     stored = out["metrics"]["segments"]["dev"]["5"]["trading"]["rank"]["gbt"]["cumulative_net_return"]

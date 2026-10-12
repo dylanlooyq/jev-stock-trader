@@ -30,12 +30,11 @@ KINDS = {"baseline": "Baseline"}
 MODEL_GROUPS = {"index_ml": "Index ML Classifier", "rule": "Rule Based",
                 "jev_ml": "ML Classifier with Jev", "jev": "Jev"}
 # The "Strategies" filter on the page. `groups` lists the groups a choice shows (None for all of them).
-# Strategies with no group stay on screen unless `keep` names the only ones to keep.
+# Strategies with no group always stay on screen.
 STRATEGY_FILTERS = [
-    {"id": "all", "label": "All strategies", "groups": None, "keep": None},
-    {"id": "ml", "label": "ML classifiers", "groups": ["index_ml"], "keep": None},
-    {"id": "jev_related", "label": "Jev related", "groups": ["jev", "jev_ml"], "keep": None},
-    {"id": "jev_hold", "label": "Jev and buy & hold", "groups": ["jev"], "keep": ["always_buy"]},
+    {"id": "all", "label": "All strategies", "groups": None},
+    {"id": "ml", "label": "ML classifiers", "groups": ["index_ml"]},
+    {"id": "jev_related", "label": "Jev related", "groups": ["jev", "jev_ml"]},
 ]
 # Statistics that change when the trading cost does; the page swaps these when costs are switched off.
 COST_STATS = ("cumulative_net_return", "cagr", "sharpe", "max_drawdown", "alpha", "beta")
