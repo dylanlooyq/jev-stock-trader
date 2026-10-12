@@ -1,5 +1,6 @@
 """End-to-end run on synthetic data: outputs, report content and the full-window switch."""
 import json
+import re
 
 import pandas as pd
 import pytest
@@ -114,4 +115,6 @@ def test_local_backtest_page_is_self_contained(cfg, prices, tmp_path):
 
     page = write_page(out["out_dir"]).read_text(encoding="utf-8")
     assert "/*__DATA__*/null" not in page and '"name":"page"' in page
-    assert "http://" not in page.replace("http://www.w3.org/2000/svg", "") and "https://" not in page   # opens offline
+    # Opens offline: nothing is loaded from the network. Links out to papers are the only addresses on the page.
+    assert "http://" not in page.replace("http://www.w3.org/2000/svg", "")
+    assert not re.search(r"<link\b|@import|\bsrc\s*=|url\(|fetch\(|XMLHttpRequest|import\(", page)
