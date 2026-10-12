@@ -161,6 +161,14 @@ def _trading_table(stats: dict, rule: str) -> str:
     return table(headers, rows)
 
 
+def _evaluated_horizons(metrics: dict, cfg: dict) -> list[int]:
+    """Horizons that actually have results; a rolling run can skip one that has no validation data."""
+    seen: set[int] = set()
+    for segment in metrics["segments"].values():
+        seen |= {int(h) for h in segment}
+    return sorted(seen) or list(cfg["task"]["horizons"])
+
+
 def render_report(metrics: dict, manifest: dict, cfg: dict) -> str:
     primary, primary_rule = cfg["task"]["primary_horizon"], cfg["backtest"]["primary_rule"]
     label, splits, data, bt = cfg["task"]["label"], cfg["splits"], manifest.get("dataset", {}), cfg["backtest"]
@@ -199,12 +207,17 @@ def render_report(metrics: dict, manifest: dict, cfg: dict) -> str:
          f"{label['vol_window']}-day volatility × √h, otherwise HOLD."
          if label["method"] == "vol_adjusted" else
          f"- Labels: BUY / SELL when the forward return is beyond ± the fixed threshold {label['fixed_thresholds']}."),
-        f"- Horizons: {cfg['task']['horizons']} trading days; primary: {primary}.",
+        f"- Horizons: {_evaluated_horizons(metrics, cfg)} trading days; primary: {primary}."
+        + (f" Configured but not evaluated: {sorted(set(cfg['task']['horizons']) - set(_evaluated_horizons(metrics, cfg)))} "
+           "(the validation window was too short after purging)."
+           if set(_evaluated_horizons(metrics, cfg)) != set(cfg["task"]["horizons"]) else ""),
         "",
         "## 3. Leakage prevention",
         "",
-        f"- Walk-forward folds of {splits['test_months']} months, expanding training window, "
-        f"{splits['validation_months']}-month validation tail used for all tuning.",
+        f"- Walk-forward folds of {splits['test_months']} months, "
+        + (f"rolling {splits['train_window_months']}-month training window (exploratory variant), "
+           if splits.get("train_window_months") else "expanding training window, ")
+        + f"{splits['validation_months']}-month validation tail used for all tuning.",
         "- Rows whose label window reaches the next segment are purged, plus an embargo of h trading days.",
         "- Scaling and all other preprocessing are fitted inside each model on fitting rows only.",
         f"- Data on or after {splits['holdout_start']} is removed before features are computed unless the "

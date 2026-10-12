@@ -7,9 +7,13 @@ prior decision or result (see section 11).
 Status markers: **DECIDED** (approved by the project owner), **PROVISIONAL** (proposed
 default, implemented, not explicitly approved), **OPEN** (needs a decision or evidence).
 
-Last updated: 2026-10-11. The baseline run (traditional models and rules, all twelve
-folds, ten assets) has been made; its results are in section 7. **No Jev call has been
-made, so there is no result yet on the thesis.**
+Last updated: 2026-10-12. **The universe changed on 2026-10-12 (D13, below): bitcoin was
+removed and six stocks added, fifteen assets in all. Everything in this file that speaks of
+"ten assets", bitcoin, `multi_asset_10_v1` or "top 3 of 10" describes the superseded
+universe and is kept as history.** The baseline run in section 7 (traditional models and
+rules, twelve folds) was made on the ten assets and is superseded; it is being repeated on
+the fifteen. Jev calls have been made (a 50-row pilot, then a zero-shot annotation) but **no
+Jev result has been scored yet, so there is still no result on the thesis.**
 
 Two sessions worked on this repository in parallel on 2026-10-11; their work was combined
 into one design at the freeze commit named in section 4.
@@ -135,6 +139,50 @@ is not practical here.
   counted. Nothing is filled or interpolated.
 - **Enhanced-information study (news or other text): not in scope now** (owner decision).
 
+### Universe change — **DECIDED 2026-10-12 (D13, owner)**
+
+The owner asked to remove bitcoin and add six stocks so that the universe is fifteen.
+
+- **New universe `mixed_15_v2`:** the nine remaining funds (`IVV GLD TLT EFA EEM USO VNQ UUP
+  HYG`) plus six single stocks: `GOOGL PG IBM CVX WFC CSCO`, plus SPY as market proxy.
+- **How the six were chosen (owner chose the "largest by 2009 market cap" rule):** the
+  largest US companies by market capitalisation in 2009, skipping the twelve smoke-test
+  stocks (`config/smoke.yaml`) so that the smoke runs still reveal nothing about the
+  experiment's assets. Source: a retrospective S&P 500 market-cap table for 2009 on
+  finhacker.cz (its date within 2009 is not stated; a second source could not be fetched).
+  Ranks 1 to 13 were XOM, MSFT, WMT, GOOGL, AAPL, JNJ, PG, JPM, IBM, CVX, WFC, PFE, CSCO; the
+  smoke set removed XOM, MSFT, WMT, AAPL, JNJ, JPM, PFE, leaving the six above. Chosen with
+  no knowledge of later returns, but all six are still listed, a mild survivorship filter,
+  and three of them are technology companies.
+- **Ranking rule holds 4 of 15** (`rank_fraction: 0.27`) and the declared check holds 1 of 15
+  (`rank_check_fraction: 0.07`). 0.3 and 0.1 of 15 would be 4.5 and 1.5 and round to 4 and 2,
+  which would silently turn the top-1 check into a top-2; the fractions are set so the
+  intent (about 30%, and a single-asset check) survives. **Flagged for the owner: this is a
+  new D11 parameter choice.**
+- **Data:** dataset `0b91d318b8c2` (SHA-256 `0b91d318b8c2b1ec98168ff3d4bc0c5c421765c9812a72b4b6726cef7b193f18`),
+  downloaded 2026-10-12, 16 tickers, 67,376 rows, none dropped, every ticker has all 4,211
+  trading days from 2010-01-04, so there are no late starters and the calendar rule now removes
+  nothing. Two daily moves beyond 25%: USO in 2020 and **IBM -25% on 2026-07-14** (67M shares
+  traded against a normal 4M; the unadjusted and adjusted closes agree, so it is a real move
+  and not a data error). It falls inside the locked holdout.
+- **What this invalidates:**
+  - The ten-asset baseline (`baseline_multi_asset_v1`, `rerun_dev_2026-10-12`) and the
+    published report: superseded, kept as history.
+  - **All Jev responses bought so far.** Each Jev prompt buckets an asset against the pooled
+    group and includes its rank within the group, so every state changes with the universe.
+    31,873 of 32,839 ten-asset zero-shot requests (about $3.6) had been paid for when the run
+    was stopped; none was scored and none can be reused.
+  - The freeze recorded at `7223fb6`. The design is re-frozen at the commit that contains
+    D13. The D12 rolling-window variants are re-run on the new universe.
+- **Unchanged:** features, labels, grids, trade rules (apart from the two fractions above),
+  Jev wording `v2`. The v2 text did not change; only the values filled into it do. The
+  earlier ten-asset annotation never produced a result that could have guided any choice.
+- **Cost on the fifteen assets** (`jev-estimate`, rough): 50,940 rows through 2024-09, about
+  $5.3 zero-shot and $20.8 with examples; about 8% more at the pilot's measured token usage,
+  so about $5.8 and $22.4.
+- *Superseded 2026-10-12 by D13:* the ten-asset list in D10 above, including the statements
+  about bitcoin, the nine-asset first fold, and the 18% bitcoin share of the trend rules.
+
 ### Task — **FROZEN 2026-10-11** (see section 4; values marked * were provisional defaults)
 
 - **Prediction timestamp:** after the close of day *t*, using data up to and including *t*.
@@ -193,6 +241,32 @@ is not practical here.
 *Superseded 2026-10-11:* the earlier plan held 2024-10 to 2026-09 as a locked holdout and
 the sole confirmatory test. Dropped because a 2-year window cannot detect a realistic
 Sharpe difference.
+
+### Rolling-window variants (option A) — **DECIDED 2026-10-12 (D12, owner); EXPLORATORY**
+
+The owner asked for rolling training windows of 3, 6, 9 and 12 months, each refitted every
+W months (option A). The expanding-window design above stays the primary and reference
+design; these four are **declared exploratory sensitivity variants** (rule 11) and each
+adds comparisons to the multiple-testing count. They change no feature, label, trade rule
+or wording.
+
+- **Per fold, window W:** train = the W months before the validation window; validation =
+  W/3 months (1, 2, 3, 4); refit on train + validation; test = the next W months. Purge and
+  embargo are unchanged (`2h + 1` trading days before each boundary).
+- **Config:** `config/rolling_<W>m.yaml` plus `config/rolling_small_samples.yaml` (tree leaf
+  sizes cut from 50-200 to 10-20, still 8 configurations per fold). Code: `train_window_months`,
+  `min_val_days` in `jevbench/splits.py`.
+- **The 20-day horizon is skipped for W = 3 and 6.** The purge gap at 20 days is 41 trading
+  days, which leaves no validation data in a 1 or 2 month window. Skipped, not forced.
+  W = 9 and 12 cover all three horizons. The 5-day primary horizon runs for all four.
+- **First test fold:** 2014-10-01, except W = 9 which starts 2015-01-01 so that the holdout
+  start (2024-10-01) stays on a fold boundary. Test periods are therefore a few months
+  shorter for W = 9.
+- **Thin samples.** At W = 3 a fold trains on about 500 rows and validates on about 100,
+  from labels that overlap by 5 days; validation macro-F1 is very noisy there. Read the
+  3 and 6 month results as stress tests, not as competitors to the primary design.
+- **Holdout stays locked** for these runs (development window only).
+- **Jev costs nothing extra:** annotation is per row and independent of the fold.
 
 ### State sent to external classifiers (fold-independent, so each row is sent once)
 
@@ -279,6 +353,13 @@ Question wording versions:
 - **BUY-names portfolio (secondary rule, `buy_names`):** hold the assets labelled BUY,
   capped at 10% each per tranche; the rest is cash. With ten assets the cap keeps this
   book far from fully invested, so read its Sharpe ratio, not its return.
+  **D14 (owner, 2026-10-12): each BUY gets a fixed slot of 1/15 of capital**
+  (`max_weight: 0.0666667`), so an asset's weight never depends on how many other assets
+  are BUY. Up to all fifteen can be held; the rest is cash. Still a secondary view, not the
+  primary test: a book that is mostly in cash mixes selection with market exposure, and the
+  always-HOLD and random baselines degenerate under it. One more comparison for the
+  multiple-testing count. *Superseded by D14:* the 10% cap above, under which a name's
+  weight was `min(1 / number of BUYs, 10%)`.
 - **Buy-and-hold benchmark:** `always_buy`, every asset equally weighted through the same
   engine and costs. SPY (`market_buy_and_hold`) is context only.
 - *Superseded 2026-10-11 by D11:* top 20% of the universe (2 of 10), a default the owner
@@ -320,6 +401,15 @@ BUY-names as the main trading test.
 | 2026-10-11 | `7223fb6` | Owner decision D11: ranking rule holds the top 3 of 10 assets; top 1 reported as a declared check. Both sessions' work combined; outputs reworded from "stocks" to "assets"; 77 tests | Sections 4 and 6 | Decided; new freeze recorded |
 
 | 2026-10-11 | `3988057` | **Baseline run `baseline_multi_asset_v1`**: verdict window (twelve folds, 2014-10-01 to 2026-09-22), ten assets, dataset `4df028245fc7`, traditional models and rules only. Benchmark code identical to the freeze commit `7223fb6`; the later commit changed the dashboard only. 704 s | See "Baseline results" below | **Real out-of-sample baseline results. Not a result on Jev** |
+| 2026-10-12 | `115d3d1` | Fresh clone; prices re-downloaded (ten assets, SHA `9d73476d…`, differs from the original `4df02824…` because the vendor adjusts history retroactively). Dev-window run `rerun_dev_2026-10-12` (ten folds, 715 s) | 77 tests pass; run completes | Superseded by D13; not a finding |
+| 2026-10-12 | `115d3d1` | Jev pilot: 50 rows dated before 2014-10, zero-shot, budget $0.10 | 50 of 50 answered, 0 failures, pinned model confirmed, outputs not degenerate; 2,693 billed tokens per request against 2,489 estimated (+8%); cost $0.0057 | Client verified against the live API. Says nothing about predictive power |
+| 2026-10-12 | `115d3d1` | Zero-shot annotation of the ten-asset universe, cap $5, stopped by the owner-directed universe change at 31,873 of 32,839 rows (about $3.6) | None scored | **Discarded** with D13; nothing was learned from it |
+| 2026-10-12 | uncommitted | Owner decision D12: rolling 3, 6, 9 and 12 month training windows as exploratory variants; `config/rolling_*m.yaml`; 80 tests | See section 4 | Decided, exploratory |
+| 2026-10-12 | uncommitted | Owner decision D13: bitcoin removed, six stocks added, universe `mixed_15_v2`; dataset `0b91d318b8c2` frozen; 80 tests | See section 3 | Decided; design to be re-frozen at the next commit |
+| 2026-10-12 | uncommitted | Owner decision D14: BUY-names rule uses a fixed 1/15 slot per name; test added; 81 tests | See section 6 | Decided; secondary view only |
+| 2026-10-12 | uncommitted | **Jev zero-shot annotation, 15 assets** (`jev_outputs_mixed_15_v2_v2_zero`): 50,940 rows through 2024-09, wording `v2`, `jev-1.13.0`, cap $7 | 50,940 of 50,940 answered, 0 failures; 137.2M input tokens billed, **$5.76**; 27 minutes. Outputs not degenerate (HOLD is the top call for 83% of rows at 1 day, 50% at 5, 41% at 20) | Complete. Wording `v2` has now had its one attempt on this universe |
+| 2026-10-12 | uncommitted | Baseline `mixed15_dev_traditional` and full dev run `mixed15_dev_full` (ten folds, 2014-10 to 2024-09, 15 assets, top 4 of 15, dataset `0b91d318b8c2`, Jev zero-shot arms included); rolling-window runs `mixed15_rolling_3m/6m/9m/12m` (D12; exploratory). Holdout locked throughout | 5-day primary, net Sharpe: equal-weight buy and hold 0.52, random selection 0.21, random forest 0.40, momentum 0.29, GBT 0.25, moving-average 0.25, **Jev signal 0.11, Jev head 0.06, Jev plus controlled 0.26**, logreg -0.15. Against buy and hold: Jev signal -0.41 (-0.72 to -0.14, Holm p 0.05), Jev head -0.46 (-0.70 to -0.23, p 0.00), Jev plus controlled -0.26 (-0.59 to +0.02, p 0.40). Jev plus controlled 0.26 against its Jev-free twin GBT 0.25 | **Development window only; the verdict window (holdout) has not been run.** Jev alone is below the random-selection line and no Jev arm beats buy and hold. Jev adds nothing measurable to the controlled features. Rolling variants: see run folders; results move around with window length without a monotonic pattern, as expected from noise (3 and 6 month runs are stress tests) |
+| 2026-10-12 | uncommitted | **With-examples Jev sample check**: 1,500 random development rows, wording `v2`, cap $1, scored against zero-shot on the same rows (rank correlation of P(BUY) - P(SELL) with the forward return, macro-F1, log-loss). Output moved to `data/_sample_checks/` so no benchmark reads it as a full run | 1,500 of 1,500 answered, **$0.72**, 11.5k tokens billed per request (18% above the 9.7k estimate; full variant would be about $25). Zero-shot over all 50,940 rows: rank correlation +0.002 / -0.010 / -0.011 at 1 / 5 / 20 days, macro-F1 0.29 to 0.33 (random is about 0.33), log-loss 1.38 to 1.52 against 1.07 for the class prior alone. Examples minus zero-shot rank correlation: +0.004 (-0.017, +0.026), -0.023 (-0.049, +0.003), -0.004 (-0.046, +0.036); the two scores correlate 0.67 to 0.89; examples says HOLD for 62% of rows at 5 days against 43% true | No measurable gain from examples; not bought in full. Zero-shot Jev carries no ranking signal on this sample. A check this size could not see a true gain smaller than about 0.03 |
 
 ### Baseline results (run `baseline_multi_asset_v1`, 2026-10-11)
 

@@ -1,0 +1,391 @@
+model,family,horizon,fold,segment,status,fit_seconds,predict_seconds,n_test,val_macro_f1,n_configs,params
+majority,baseline,1,0,dev,ok,0.0016876000445336103,5.080003757029772e-05,3780.0,0.20469483568075117,1.0,
+stratified_random,baseline,1,0,dev,ok,0.001507100067101419,0.00010309997014701366,3780.0,0.35840555376707456,1.0,
+logreg,classifier,1,0,dev,ok,0.18445959989912808,0.0014943000860512257,3780.0,0.32203654676936255,8.0,"{'C': 100.0, 'class_weight': 'balanced'}"
+random_forest,classifier,1,0,dev,ok,3.654320999979973,0.0977283000247553,3780.0,0.34155164829941514,8.0,"{'max_depth': 16, 'min_samples_leaf': 10, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,1,0,dev,ok,5.641854399931617,0.04030100000090897,3780.0,0.35100646546825603,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': None}"
+momentum_rule,rule,1,0,dev,ok,0.021653799922205508,0.00023310002870857716,3780.0,0.3284824437761434,8.0,"{'lookback': 20, 'band': 0.5}"
+ma_cross_rule,rule,1,0,dev,ok,0.014331899932585657,0.000408699968829751,3780.0,0.33592982012698536,6.0,"{'fast': 20, 'slow': 50, 'confirm': True}"
+jev_signal_zero,jev,1,0,dev,ok,0.0031854999251663685,0.0008515000808984041,3780.0,0.24554667638249417,1.0,
+jev_signal_examples,jev,1,0,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,1,0,dev,ok,3.5517706000246108,0.030871499911881983,3780.0,0.35576728208097635,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_head_examples,jev,1,0,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,1,0,dev,ok,7.280950399930589,0.044862500042654574,3780.0,0.3577610700035468,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': None}"
+jev_plus_controlled_examples,jev,1,0,dev,not run: no saved outputs,,,,,,
+majority,baseline,1,1,dev,ok,0.0031420999439433217,0.00019599997904151678,3795.0,0.18965517241379312,1.0,
+stratified_random,baseline,1,1,dev,ok,0.003340700059197843,0.00027520000003278255,3795.0,0.3142996944922328,1.0,
+logreg,classifier,1,1,dev,ok,0.4436728999717161,0.0016698000254109502,3795.0,0.3222244562815804,8.0,"{'C': 1.0, 'class_weight': None}"
+random_forest,classifier,1,1,dev,ok,4.132668399950489,0.08679269999265671,3795.0,0.2882206070783554,8.0,"{'max_depth': 16, 'min_samples_leaf': 10, 'class_weight': None}"
+gbt,classifier,1,1,dev,ok,5.143467399990186,0.020723000052385032,3795.0,0.3454420244937986,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': None}"
+momentum_rule,rule,1,1,dev,ok,0.018509199959225953,0.0002378999488428235,3795.0,0.3552998144078283,8.0,"{'lookback': 250, 'band': 0.5}"
+ma_cross_rule,rule,1,1,dev,ok,0.012613200000487268,0.0003556999145075679,3795.0,0.34209120379451324,6.0,"{'fast': 20, 'slow': 50, 'confirm': True}"
+jev_signal_zero,jev,1,1,dev,ok,0.0031377000268548727,0.0007669999031350017,3795.0,0.29469448677799653,1.0,
+jev_signal_examples,jev,1,1,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,1,1,dev,ok,3.898348999908194,0.06429220002610236,3795.0,0.3529740967436578,8.0,"{'num_leaves': 15, 'learning_rate': 0.03, 'n_estimators': 400, 'class_weight': 'balanced'}"
+jev_head_examples,jev,1,1,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,1,1,dev,ok,6.602531300042756,0.02200200001243502,3795.0,0.32988603053220045,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': None}"
+jev_plus_controlled_examples,jev,1,1,dev,not run: no saved outputs,,,,,,
+majority,baseline,1,2,dev,ok,0.0030670000705868006,0.00011809996794909239,3765.0,0.21012101210121012,1.0,
+stratified_random,baseline,1,2,dev,ok,0.0029346999945119023,0.00022950000129640102,3765.0,0.32740455659447715,1.0,
+logreg,classifier,1,2,dev,ok,0.34161879995372146,0.002887299982830882,3765.0,0.3093290501340041,8.0,"{'C': 0.001, 'class_weight': 'balanced'}"
+random_forest,classifier,1,2,dev,ok,4.231489300029352,0.06022410001605749,3765.0,0.3528597226855242,8.0,"{'max_depth': 8, 'min_samples_leaf': 20, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,1,2,dev,ok,5.089731900021434,0.01545599999371916,3765.0,0.37092390095132416,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': 'balanced'}"
+momentum_rule,rule,1,2,dev,ok,0.017835799953900278,0.00021399999968707561,3765.0,0.3470799268109885,8.0,"{'lookback': 250, 'band': 0.5}"
+ma_cross_rule,rule,1,2,dev,ok,0.013883800012990832,0.00037509994581341743,3765.0,0.28772282386215625,6.0,"{'fast': 20, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,1,2,dev,ok,0.003224999993108213,0.0007836000295355916,3765.0,0.2840280671449573,1.0,
+jev_signal_examples,jev,1,2,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,1,2,dev,ok,3.724818199989386,0.021295599988661706,3765.0,0.3508801197212297,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_head_examples,jev,1,2,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,1,2,dev,ok,6.2967588000465184,0.022027299972251058,3765.0,0.37526192707272693,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_plus_controlled_examples,jev,1,2,dev,not run: no saved outputs,,,,,,
+majority,baseline,1,3,dev,ok,0.0031213999027386308,0.00014770007692277431,3765.0,0.20495495495495497,1.0,
+stratified_random,baseline,1,3,dev,ok,0.003312299959361553,0.0002831000601872802,3765.0,0.3381689132927615,1.0,
+logreg,classifier,1,3,dev,ok,0.3569496999261901,0.002687700092792511,3765.0,0.35494650285347956,8.0,"{'C': 0.001, 'class_weight': 'balanced'}"
+random_forest,classifier,1,3,dev,ok,4.16538609995041,0.05902909999713302,3765.0,0.3589184339291515,8.0,"{'max_depth': 8, 'min_samples_leaf': 20, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,1,3,dev,ok,4.968072999967262,0.01567250001244247,3765.0,0.35708471854496193,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': 'balanced'}"
+momentum_rule,rule,1,3,dev,ok,0.0175673000048846,0.00021199998445808887,3765.0,0.32283128703325176,8.0,"{'lookback': 120, 'band': 0.5}"
+ma_cross_rule,rule,1,3,dev,ok,0.013749100035056472,0.0003632999723777175,3765.0,0.3185473609202423,6.0,"{'fast': 50, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,1,3,dev,ok,0.0035735999699681997,0.0007900999626144767,3765.0,0.25503351820122405,1.0,
+jev_signal_examples,jev,1,3,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,1,3,dev,ok,3.4943965000566095,0.020452299970202148,3765.0,0.37221348695914136,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_head_examples,jev,1,3,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,1,3,dev,ok,6.714264500071295,0.025001100031659007,3765.0,0.3541941506540558,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_plus_controlled_examples,jev,1,3,dev,not run: no saved outputs,,,,,,
+majority,baseline,1,4,dev,ok,0.0037517999298870564,0.00013180007226765156,3765.0,0.2000768049155146,1.0,
+stratified_random,baseline,1,4,dev,ok,0.003988599986769259,0.0002756000030785799,3765.0,0.3310112620457448,1.0,
+logreg,classifier,1,4,dev,ok,0.39596900006290525,0.002342200023122132,3765.0,0.3453354844505519,8.0,"{'C': 0.001, 'class_weight': 'balanced'}"
+random_forest,classifier,1,4,dev,ok,4.275711499969475,0.07215090002864599,3765.0,0.3667328484719789,8.0,"{'max_depth': 4, 'min_samples_leaf': 20, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,1,4,dev,ok,4.798558300011791,0.015174500062130392,3765.0,0.3585933855817609,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': 'balanced'}"
+momentum_rule,rule,1,4,dev,ok,0.0177972000092268,0.00022209994494915009,3765.0,0.3500566539092403,8.0,"{'lookback': 120, 'band': 0.5}"
+ma_cross_rule,rule,1,4,dev,ok,0.012963199988007545,0.00035360001493245363,3765.0,0.3478482468584465,6.0,"{'fast': 50, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,1,4,dev,ok,0.003209699993021786,0.0007904000813141465,3765.0,0.2781438481638136,1.0,
+jev_signal_examples,jev,1,4,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,1,4,dev,ok,3.311284799943678,0.015814200043678284,3765.0,0.363230322210294,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': 'balanced'}"
+jev_head_examples,jev,1,4,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,1,4,dev,ok,6.239244999946095,0.022567000007256866,3765.0,0.37805884649230515,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_plus_controlled_examples,jev,1,4,dev,not run: no saved outputs,,,,,,
+majority,baseline,1,5,dev,ok,0.003450899966992438,0.0001346999779343605,3795.0,0.1992690902096557,1.0,
+stratified_random,baseline,1,5,dev,ok,0.00337380007840693,0.00025749998167157173,3795.0,0.34340463215685757,1.0,
+logreg,classifier,1,5,dev,ok,0.3684953000629321,0.00266219989862293,3795.0,0.3509252835338132,8.0,"{'C': 0.001, 'class_weight': 'balanced'}"
+random_forest,classifier,1,5,dev,ok,4.160749300033785,0.06329089996870607,3795.0,0.34770076047667914,8.0,"{'max_depth': 4, 'min_samples_leaf': 20, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,1,5,dev,ok,5.527101799962111,0.0400861999951303,3795.0,0.3616763555551012,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': 'balanced'}"
+momentum_rule,rule,1,5,dev,ok,0.020536000025458634,0.0002756000030785799,3795.0,0.34197059482182723,8.0,"{'lookback': 250, 'band': 0.5}"
+ma_cross_rule,rule,1,5,dev,ok,0.012726600049063563,0.00037679995875805616,3795.0,0.29716619085217955,6.0,"{'fast': 20, 'slow': 50, 'confirm': True}"
+jev_signal_zero,jev,1,5,dev,ok,0.003222699975594878,0.0008319000480696559,3795.0,0.2922310983730316,1.0,
+jev_signal_examples,jev,1,5,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,1,5,dev,ok,3.6918320999247953,0.020053400075994432,3795.0,0.36334689047693686,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_head_examples,jev,1,5,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,1,5,dev,ok,6.246186099946499,0.021984499995596707,3795.0,0.3531654766275753,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_plus_controlled_examples,jev,1,5,dev,not run: no saved outputs,,,,,,
+majority,baseline,1,6,dev,ok,0.003210800001397729,0.00012800004333257675,3780.0,0.2289029535864979,1.0,
+stratified_random,baseline,1,6,dev,ok,0.0031741000711917877,0.0003016999689862132,3780.0,0.34344648565032854,1.0,
+logreg,classifier,1,6,dev,ok,0.37777059990912676,0.003983800066635013,3780.0,0.3861765813815273,8.0,"{'C': 0.001, 'class_weight': 'balanced'}"
+random_forest,classifier,1,6,dev,ok,4.275765499914996,0.07253770006354898,3780.0,0.3447551901739561,8.0,"{'max_depth': 12, 'min_samples_leaf': 10, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,1,6,dev,ok,5.064887600019574,0.017084899940527976,3780.0,0.36476178037706375,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': None}"
+momentum_rule,rule,1,6,dev,ok,0.017849699943326414,0.000242199981585145,3780.0,0.3748834646779405,8.0,"{'lookback': 120, 'band': 0.5}"
+ma_cross_rule,rule,1,6,dev,ok,0.012556000030599535,0.00035879993811249733,3780.0,0.35597953218471656,6.0,"{'fast': 50, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,1,6,dev,ok,0.003097900073044002,0.0007960000075399876,3780.0,0.2842024066104669,1.0,
+jev_signal_examples,jev,1,6,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,1,6,dev,ok,3.9296149000292644,0.04242409998551011,3780.0,0.36442160527968537,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_head_examples,jev,1,6,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,1,6,dev,ok,6.432313100085594,0.016955899889580905,3780.0,0.3542235568331724,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': None}"
+jev_plus_controlled_examples,jev,1,6,dev,not run: no saved outputs,,,,,,
+majority,baseline,1,7,dev,ok,0.0037340999115258455,0.00014910008758306503,3780.0,0.20632279534109818,1.0,
+stratified_random,baseline,1,7,dev,ok,0.002924600034020841,0.0002530999481678009,3780.0,0.3250182542240199,1.0,
+logreg,classifier,1,7,dev,ok,0.305372399976477,0.0020565000595524907,3780.0,0.3170385311760412,8.0,"{'C': 1.0, 'class_weight': 'balanced'}"
+random_forest,classifier,1,7,dev,ok,4.3104331999784335,0.07086279999930412,3780.0,0.3166988874598546,8.0,"{'max_depth': 16, 'min_samples_leaf': 10, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,1,7,dev,ok,5.162396700005047,0.014885400072671473,3780.0,0.313516303861439,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': None}"
+momentum_rule,rule,1,7,dev,ok,0.018534300033934414,0.000242199981585145,3780.0,0.30760611021192025,8.0,"{'lookback': 20, 'band': 0.5}"
+ma_cross_rule,rule,1,7,dev,ok,0.012595299980603158,0.0003551000263541937,3780.0,0.30633161420198457,6.0,"{'fast': 20, 'slow': 50, 'confirm': True}"
+jev_signal_zero,jev,1,7,dev,ok,0.0031211000168696046,0.0007739999564364552,3780.0,0.2648957409905842,1.0,
+jev_signal_examples,jev,1,7,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,1,7,dev,ok,3.3461732999421656,0.015491200028918684,3780.0,0.33423994686245667,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': 'balanced'}"
+jev_head_examples,jev,1,7,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,1,7,dev,ok,6.212055100011639,0.01682659995276481,3780.0,0.3154125880136631,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': None}"
+jev_plus_controlled_examples,jev,1,7,dev,not run: no saved outputs,,,,,,
+majority,baseline,1,8,dev,ok,0.003399200038984418,0.00012320000678300858,3750.0,0.1996962794229309,1.0,
+stratified_random,baseline,1,8,dev,ok,0.002976299962028861,0.00024349999148398638,3750.0,0.33353086311981767,1.0,
+logreg,classifier,1,8,dev,ok,0.40575859998352826,0.002200600109063089,3750.0,0.3560617651336251,8.0,"{'C': 0.001, 'class_weight': 'balanced'}"
+random_forest,classifier,1,8,dev,ok,5.161323699983768,0.060008700005710125,3750.0,0.38792662423712465,8.0,"{'max_depth': 12, 'min_samples_leaf': 10, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,1,8,dev,ok,5.956936700036749,0.04183909995481372,3750.0,0.34121799538195713,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': 'balanced'}"
+momentum_rule,rule,1,8,dev,ok,0.017993499990552664,0.0002351000439375639,3750.0,0.38865249493071047,8.0,"{'lookback': 250, 'band': 0.5}"
+ma_cross_rule,rule,1,8,dev,ok,0.013898700010031462,0.00037640007212758064,3750.0,0.3711602883538973,6.0,"{'fast': 20, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,1,8,dev,ok,0.003621400101110339,0.000844899914227426,3750.0,0.3077390531516452,1.0,
+jev_signal_examples,jev,1,8,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,1,8,dev,ok,3.95903249992989,0.06443630007561296,3750.0,0.3424731406266159,8.0,"{'num_leaves': 15, 'learning_rate': 0.03, 'n_estimators': 400, 'class_weight': 'balanced'}"
+jev_head_examples,jev,1,8,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,1,8,dev,ok,6.995471299975179,0.06541079992894083,3750.0,0.3604091038733501,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_plus_controlled_examples,jev,1,8,dev,not run: no saved outputs,,,,,,
+majority,baseline,1,9,dev,ok,0.003405699972063303,0.00020499993115663528,3735.0,0.19546247818499127,1.0,
+stratified_random,baseline,1,9,dev,ok,0.0033017999958246946,0.0002688999520614743,3735.0,0.3370980582225473,1.0,
+logreg,classifier,1,9,dev,ok,0.40629399998579174,0.001548200030811131,3735.0,0.3444818952708235,8.0,"{'C': 0.01, 'class_weight': 'balanced'}"
+random_forest,classifier,1,9,dev,ok,4.1697777000954375,0.06113569997251034,3735.0,0.2942852434023218,8.0,"{'max_depth': 8, 'min_samples_leaf': 20, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,1,9,dev,ok,5.728063599904999,0.06316000001970679,3735.0,0.29255570408525394,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': 'balanced'}"
+momentum_rule,rule,1,9,dev,ok,0.01883690000977367,0.00024679990019649267,3735.0,0.31381218019606144,8.0,"{'lookback': 60, 'band': 0.5}"
+ma_cross_rule,rule,1,9,dev,ok,0.013502800022251904,0.00037350005004554987,3735.0,0.3293512474088281,6.0,"{'fast': 20, 'slow': 50, 'confirm': True}"
+jev_signal_zero,jev,1,9,dev,ok,0.00348169996868819,0.0008895000210031867,3735.0,0.2419650729011974,1.0,
+jev_signal_examples,jev,1,9,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,1,9,dev,ok,3.337809400050901,0.02771039993967861,3735.0,0.35394048590617205,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_head_examples,jev,1,9,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,1,9,dev,ok,6.458727300050668,0.01896899996791035,3735.0,0.2941769126878739,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': 'balanced'}"
+jev_plus_controlled_examples,jev,1,9,dev,not run: no saved outputs,,,,,,
+majority,baseline,5,0,dev,ok,0.0032197999535128474,0.00012780004180967808,3780.0,0.19200342099636517,1.0,
+stratified_random,baseline,5,0,dev,ok,0.003028900013305247,0.00025619997177273035,3780.0,0.3259838021544638,1.0,
+logreg,classifier,5,0,dev,ok,0.4201482000062242,0.001978199928998947,3780.0,0.37103732334593315,8.0,"{'C': 1.0, 'class_weight': None}"
+random_forest,classifier,5,0,dev,ok,3.9871971999527887,0.05036750005092472,3780.0,0.35078240666221666,8.0,"{'max_depth': 12, 'min_samples_leaf': 10, 'class_weight': None}"
+gbt,classifier,5,0,dev,ok,5.67864759999793,0.06365140003617853,3780.0,0.35863438989238317,8.0,"{'num_leaves': 15, 'learning_rate': 0.03, 'n_estimators': 400, 'class_weight': None}"
+momentum_rule,rule,5,0,dev,ok,0.017666999949142337,0.00023760006297379732,3780.0,0.2940829611832348,8.0,"{'lookback': 20, 'band': 0.5}"
+ma_cross_rule,rule,5,0,dev,ok,0.012871099985204637,0.00035009998828172684,3780.0,0.3319666200740911,6.0,"{'fast': 20, 'slow': 50, 'confirm': True}"
+jev_signal_zero,jev,5,0,dev,ok,0.003104900009930134,0.0007693999214097857,3780.0,0.3027327143053975,1.0,
+jev_signal_examples,jev,5,0,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,5,0,dev,ok,3.7022675001062453,0.053359099896624684,3780.0,0.3456616290583237,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': None}"
+jev_head_examples,jev,5,0,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,5,0,dev,ok,7.303377000032924,0.04288790002465248,3780.0,0.3571106374863518,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': None}"
+jev_plus_controlled_examples,jev,5,0,dev,not run: no saved outputs,,,,,,
+majority,baseline,5,1,dev,ok,0.0031980000203475356,0.0001330999657511711,3795.0,0.18743343982960595,1.0,
+stratified_random,baseline,5,1,dev,ok,0.003042299998924136,0.0002457000082358718,3795.0,0.3116442865439975,1.0,
+logreg,classifier,5,1,dev,ok,0.45730670006014407,0.0018189999973401427,3795.0,0.3118113724512111,8.0,"{'C': 100.0, 'class_weight': None}"
+random_forest,classifier,5,1,dev,ok,4.657386000035331,0.0964940000558272,3795.0,0.26403729317692254,8.0,"{'max_depth': 12, 'min_samples_leaf': 10, 'class_weight': None}"
+gbt,classifier,5,1,dev,ok,5.779971300042234,0.042386299930512905,3795.0,0.27781316903765596,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': None}"
+momentum_rule,rule,5,1,dev,ok,0.017678100033663213,0.0002465000143274665,3795.0,0.3668165011680286,8.0,"{'lookback': 250, 'band': 0.5}"
+ma_cross_rule,rule,5,1,dev,ok,0.012485799961723387,0.00042429997120052576,3795.0,0.3256654456654457,6.0,"{'fast': 20, 'slow': 50, 'confirm': True}"
+jev_signal_zero,jev,5,1,dev,ok,0.003165000001899898,0.0007454999722540379,3795.0,0.3575505058179353,1.0,
+jev_signal_examples,jev,5,1,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,5,1,dev,ok,3.4411733000306413,0.025765600032173097,3795.0,0.35822754718775257,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_head_examples,jev,5,1,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,5,1,dev,ok,7.075273699942045,0.04173789999913424,3795.0,0.27883962960976794,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': None}"
+jev_plus_controlled_examples,jev,5,1,dev,not run: no saved outputs,,,,,,
+majority,baseline,5,2,dev,ok,0.0030483000446110964,0.00012479990255087614,3765.0,0.20823145884270577,1.0,
+stratified_random,baseline,5,2,dev,ok,0.0030058000702410936,0.0002454000059515238,3765.0,0.33543737768194165,1.0,
+logreg,classifier,5,2,dev,ok,0.37381889997050166,0.0017773000290617347,3765.0,0.2874263458769719,8.0,"{'C': 0.001, 'class_weight': 'balanced'}"
+random_forest,classifier,5,2,dev,ok,4.164357700035907,0.07333799998741597,3765.0,0.37973595034991053,8.0,"{'max_depth': 8, 'min_samples_leaf': 20, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,5,2,dev,ok,5.364822799921967,0.015339700039476156,3765.0,0.34803263076045576,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': 'balanced'}"
+momentum_rule,rule,5,2,dev,ok,0.019466100027784705,0.00025239994283765554,3765.0,0.35145258719342937,8.0,"{'lookback': 250, 'band': 0.5}"
+ma_cross_rule,rule,5,2,dev,ok,0.012567099998705089,0.00038029998540878296,3765.0,0.2843554538520214,6.0,"{'fast': 20, 'slow': 50, 'confirm': True}"
+jev_signal_zero,jev,5,2,dev,ok,0.0031336999963968992,0.0007928999839350581,3765.0,0.33643602783110227,1.0,
+jev_signal_examples,jev,5,2,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,5,2,dev,ok,3.5261956999311224,0.02520060003735125,3765.0,0.33940595866658513,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': 'balanced'}"
+jev_head_examples,jev,5,2,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,5,2,dev,ok,7.7866775000002235,0.07441100000869483,3765.0,0.3341609051330272,8.0,"{'num_leaves': 15, 'learning_rate': 0.03, 'n_estimators': 400, 'class_weight': 'balanced'}"
+jev_plus_controlled_examples,jev,5,2,dev,not run: no saved outputs,,,,,,
+majority,baseline,5,3,dev,ok,0.003118299995549023,0.00015520001761615276,3765.0,0.19742126400338197,1.0,
+stratified_random,baseline,5,3,dev,ok,0.003434100071899593,0.0003494999837130308,3765.0,0.34114231825127256,1.0,
+logreg,classifier,5,3,dev,ok,0.35931229998823255,0.0024373000487685204,3765.0,0.34844044896503507,8.0,"{'C': 0.001, 'class_weight': 'balanced'}"
+random_forest,classifier,5,3,dev,ok,4.090471800067462,0.08466529997531325,3765.0,0.3856022850332313,8.0,"{'max_depth': 16, 'min_samples_leaf': 10, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,5,3,dev,ok,5.810654900036752,0.06195180001668632,3765.0,0.3723271677817132,8.0,"{'num_leaves': 15, 'learning_rate': 0.03, 'n_estimators': 400, 'class_weight': None}"
+momentum_rule,rule,5,3,dev,ok,0.018957399995997548,0.00024319998919963837,3765.0,0.34845699407300407,8.0,"{'lookback': 120, 'band': 0.5}"
+ma_cross_rule,rule,5,3,dev,ok,0.013965400052256882,0.0003980000037699938,3765.0,0.33913223167576567,6.0,"{'fast': 20, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,5,3,dev,ok,0.0034471999388188124,0.0008390999864786863,3765.0,0.3252525062216431,1.0,
+jev_signal_examples,jev,5,3,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,5,3,dev,ok,3.8717937999172136,0.06348410004284233,3765.0,0.36318782080230366,8.0,"{'num_leaves': 15, 'learning_rate': 0.03, 'n_estimators': 400, 'class_weight': 'balanced'}"
+jev_head_examples,jev,5,3,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,5,3,dev,ok,6.61550879990682,0.01738390000537038,3765.0,0.38101442033133787,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': None}"
+jev_plus_controlled_examples,jev,5,3,dev,not run: no saved outputs,,,,,,
+majority,baseline,5,4,dev,ok,0.0034920000471174717,0.00014029990416020155,3765.0,0.18766404199475065,1.0,
+stratified_random,baseline,5,4,dev,ok,0.0032790000550448895,0.00025969999842345715,3765.0,0.3087993468156744,1.0,
+logreg,classifier,5,4,dev,ok,0.3824286999879405,0.001842200057581067,3765.0,0.36320147436210365,8.0,"{'C': 0.001, 'class_weight': 'balanced'}"
+random_forest,classifier,5,4,dev,ok,4.283645800082013,0.07153730001300573,3765.0,0.37495880905968626,8.0,"{'max_depth': 8, 'min_samples_leaf': 20, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,5,4,dev,ok,5.213676500017755,0.021883699926547706,3765.0,0.34368784898020327,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+momentum_rule,rule,5,4,dev,ok,0.017341900034807622,0.0002294000005349517,3765.0,0.37199563553758935,8.0,"{'lookback': 60, 'band': 0.5}"
+ma_cross_rule,rule,5,4,dev,ok,0.013335800031200051,0.0003616999601945281,3765.0,0.34553771830443986,6.0,"{'fast': 50, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,5,4,dev,ok,0.0031982000218704343,0.000777499983087182,3765.0,0.28870076361395247,1.0,
+jev_signal_examples,jev,5,4,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,5,4,dev,ok,3.937809400027618,0.02021909994073212,3765.0,0.3239633901540235,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_head_examples,jev,5,4,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,5,4,dev,ok,7.362266200012527,0.06505239999387413,3765.0,0.3381717700869422,8.0,"{'num_leaves': 15, 'learning_rate': 0.03, 'n_estimators': 400, 'class_weight': 'balanced'}"
+jev_plus_controlled_examples,jev,5,4,dev,not run: no saved outputs,,,,,,
+majority,baseline,5,5,dev,ok,0.0030983000760897994,0.0001221999991685152,3795.0,0.19660871431637691,1.0,
+stratified_random,baseline,5,5,dev,ok,0.0029555000364780426,0.00024720001965761185,3795.0,0.2943894809259588,1.0,
+logreg,classifier,5,5,dev,ok,0.36599920003209263,0.002783399890176952,3795.0,0.33839777651761777,8.0,"{'C': 0.001, 'class_weight': None}"
+random_forest,classifier,5,5,dev,ok,4.066986700054258,0.059032400022260845,3795.0,0.371960912608202,8.0,"{'max_depth': 4, 'min_samples_leaf': 20, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,5,5,dev,ok,4.959155400050804,0.021726699895225465,3795.0,0.32839018970852624,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': None}"
+momentum_rule,rule,5,5,dev,ok,0.017485800082795322,0.00036399997770786285,3795.0,0.3385586656404361,8.0,"{'lookback': 250, 'band': 0.5}"
+ma_cross_rule,rule,5,5,dev,ok,0.012849099934101105,0.00036990002263337374,3795.0,0.2729737809242741,6.0,"{'fast': 20, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,5,5,dev,ok,0.0033660000190138817,0.0009124999633058906,3795.0,0.3036763469719159,1.0,
+jev_signal_examples,jev,5,5,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,5,5,dev,ok,3.8702251999638975,0.02409680001437664,3795.0,0.37900739194601046,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_head_examples,jev,5,5,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,5,5,dev,ok,6.391527900006622,0.02489240001887083,3795.0,0.3430708502362876,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': None}"
+jev_plus_controlled_examples,jev,5,5,dev,not run: no saved outputs,,,,,,
+majority,baseline,5,6,dev,ok,0.003693500068038702,0.00010419997852295637,3780.0,0.24101399924328415,1.0,
+stratified_random,baseline,5,6,dev,ok,0.002809799974784255,0.0002465000143274665,3780.0,0.3464372278435155,1.0,
+logreg,classifier,5,6,dev,ok,0.4311356000835076,0.001873799948953092,3780.0,0.4140122738787431,8.0,"{'C': 100.0, 'class_weight': None}"
+random_forest,classifier,5,6,dev,ok,4.154028599965386,0.059448800049722195,3780.0,0.3760833792279932,8.0,"{'max_depth': 8, 'min_samples_leaf': 20, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,5,6,dev,ok,5.131161500001326,0.016923499992117286,3780.0,0.3818176228851986,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': 'balanced'}"
+momentum_rule,rule,5,6,dev,ok,0.01744429999962449,0.0002210000529885292,3780.0,0.398442674650818,8.0,"{'lookback': 250, 'band': 0.5}"
+ma_cross_rule,rule,5,6,dev,ok,0.012986900052055717,0.00035069999285042286,3780.0,0.39655455514234134,6.0,"{'fast': 50, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,5,6,dev,ok,0.003105600015260279,0.0007827000226825476,3780.0,0.3285674728191303,1.0,
+jev_signal_examples,jev,5,6,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,5,6,dev,ok,3.5265082999831066,0.022537400014698505,3780.0,0.38085073798913377,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_head_examples,jev,5,6,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,5,6,dev,ok,7.359716500039212,0.06728830002248287,3780.0,0.39960539564238756,8.0,"{'num_leaves': 15, 'learning_rate': 0.03, 'n_estimators': 400, 'class_weight': 'balanced'}"
+jev_plus_controlled_examples,jev,5,6,dev,not run: no saved outputs,,,,,,
+majority,baseline,5,7,dev,ok,0.0038137000519782305,0.000139000010676682,3780.0,0.20626151012891344,1.0,
+stratified_random,baseline,5,7,dev,ok,0.003260500030592084,0.0002516000531613827,3780.0,0.36421092057236343,1.0,
+logreg,classifier,5,7,dev,ok,0.3971492999698967,0.003827700042165816,3780.0,0.3049536757424897,8.0,"{'C': 1.0, 'class_weight': None}"
+random_forest,classifier,5,7,dev,ok,4.193769600009546,0.059051700052805245,3780.0,0.31892713779048826,8.0,"{'max_depth': 16, 'min_samples_leaf': 10, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,5,7,dev,ok,5.147093500010669,0.02195149997714907,3780.0,0.3413652667942561,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': None}"
+momentum_rule,rule,5,7,dev,ok,0.01671870006248355,0.00024179997853934765,3780.0,0.307341557331921,8.0,"{'lookback': 20, 'band': 0.5}"
+ma_cross_rule,rule,5,7,dev,ok,0.0133048000279814,0.0006303000263869762,3780.0,0.2831052620967245,6.0,"{'fast': 20, 'slow': 50, 'confirm': True}"
+jev_signal_zero,jev,5,7,dev,ok,0.004197899950668216,0.0008759000338613987,3780.0,0.3014851501300159,1.0,
+jev_signal_examples,jev,5,7,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,5,7,dev,ok,3.9117490999633446,0.059254600084386766,3780.0,0.36013567016042264,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_head_examples,jev,5,7,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,5,7,dev,ok,6.462918100063689,0.016553099965676665,3780.0,0.3395713039616061,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': None}"
+jev_plus_controlled_examples,jev,5,7,dev,not run: no saved outputs,,,,,,
+majority,baseline,5,8,dev,ok,0.004135200055316091,0.00012779992539435625,3750.0,0.1895551257253385,1.0,
+stratified_random,baseline,5,8,dev,ok,0.002921300008893013,0.0002579999854788184,3750.0,0.3468073308795519,1.0,
+logreg,classifier,5,8,dev,ok,0.40025060006882995,0.002250799909234047,3750.0,0.2850090799183309,8.0,"{'C': 0.001, 'class_weight': None}"
+random_forest,classifier,5,8,dev,ok,3.975908999913372,0.07098140008747578,3750.0,0.35055104447846125,8.0,"{'max_depth': 12, 'min_samples_leaf': 10, 'class_weight': None}"
+gbt,classifier,5,8,dev,ok,5.6075939000584185,0.04565869993530214,3750.0,0.34088983154767183,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': None}"
+momentum_rule,rule,5,8,dev,ok,0.018235100083984435,0.00024480000138282776,3750.0,0.36775043535131474,8.0,"{'lookback': 250, 'band': 0.5}"
+ma_cross_rule,rule,5,8,dev,ok,0.012650500051677227,0.00036179996095597744,3750.0,0.3562475451708303,6.0,"{'fast': 20, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,5,8,dev,ok,0.0032722000032663345,0.0007561000529676676,3750.0,0.3184861282565328,1.0,
+jev_signal_examples,jev,5,8,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,5,8,dev,ok,3.4748733000596985,0.020881999982520938,3750.0,0.3511721885889376,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_head_examples,jev,5,8,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,5,8,dev,ok,7.12841860007029,0.04641089995857328,3750.0,0.3513738660189203,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_plus_controlled_examples,jev,5,8,dev,not run: no saved outputs,,,,,,
+majority,baseline,5,9,dev,ok,0.002974799950607121,0.00010689999908208847,3675.0,0.18671926364234057,1.0,
+stratified_random,baseline,5,9,dev,ok,0.0028993000742048025,0.00022579997312277555,3675.0,0.35053471681043197,1.0,
+logreg,classifier,5,9,dev,ok,0.4004381999839097,0.00301360001321882,3675.0,0.2726296147145178,8.0,"{'C': 1.0, 'class_weight': 'balanced'}"
+random_forest,classifier,5,9,dev,ok,4.202417599968612,0.07094410003628582,3675.0,0.24091126995370668,8.0,"{'max_depth': 8, 'min_samples_leaf': 20, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,5,9,dev,ok,5.213557800045237,0.015489100012928247,3675.0,0.2431978211770958,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': 'balanced'}"
+momentum_rule,rule,5,9,dev,ok,0.017034600023180246,0.000215300009585917,3675.0,0.34173403013274656,8.0,"{'lookback': 250, 'band': 0.5}"
+ma_cross_rule,rule,5,9,dev,ok,0.011952999979257584,0.00034829997457563877,3675.0,0.3202650433118405,6.0,"{'fast': 50, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,5,9,dev,ok,0.003101699985563755,0.0007817000150680542,3675.0,0.3053012081167813,1.0,
+jev_signal_examples,jev,5,9,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,5,9,dev,ok,3.4497324000112712,0.021328900009393692,3675.0,0.32633842804330354,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_head_examples,jev,5,9,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,5,9,dev,ok,7.418466700008139,0.04427940002642572,3675.0,0.2521011983509461,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_plus_controlled_examples,jev,5,9,dev,not run: no saved outputs,,,,,,
+majority,baseline,20,0,dev,ok,0.0030146000208333135,0.00013109995052218437,3780.0,0.18579234972677594,1.0,
+stratified_random,baseline,20,0,dev,ok,0.0030288000125437975,0.00028979999478906393,3780.0,0.3256058408505476,1.0,
+logreg,classifier,20,0,dev,ok,0.36217660002876073,0.002246399992145598,3780.0,0.3117041429865744,8.0,"{'C': 0.01, 'class_weight': None}"
+random_forest,classifier,20,0,dev,ok,3.951516499975696,0.05920470005366951,3780.0,0.3629724080299232,8.0,"{'max_depth': 4, 'min_samples_leaf': 20, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,20,0,dev,ok,5.836540099931881,0.042916200007312,3780.0,0.35585552008417176,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': None}"
+momentum_rule,rule,20,0,dev,ok,0.017667599953711033,0.00023740006145089865,3780.0,0.28654687589632805,8.0,"{'lookback': 250, 'band': 0.5}"
+ma_cross_rule,rule,20,0,dev,ok,0.013191099977120757,0.0004355000564828515,3780.0,0.2453875581346153,6.0,"{'fast': 20, 'slow': 50, 'confirm': True}"
+jev_signal_zero,jev,20,0,dev,ok,0.00290239998139441,0.0007611999753862619,3780.0,0.23743979652297406,1.0,
+jev_signal_examples,jev,20,0,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,20,0,dev,ok,3.8279831999680027,0.08174019993748516,3780.0,0.36351798596738916,8.0,"{'num_leaves': 15, 'learning_rate': 0.03, 'n_estimators': 400, 'class_weight': 'balanced'}"
+jev_head_examples,jev,20,0,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,20,0,dev,ok,6.625533199985512,0.01758789992891252,3780.0,0.32524229712136554,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': 'balanced'}"
+jev_plus_controlled_examples,jev,20,0,dev,not run: no saved outputs,,,,,,
+majority,baseline,20,1,dev,ok,0.0027785999700427055,0.00011899997480213642,3795.0,0.16218236173393125,1.0,
+stratified_random,baseline,20,1,dev,ok,0.0026776999002322555,0.00023280002642422915,3795.0,0.34755467860912964,1.0,
+logreg,classifier,20,1,dev,ok,0.43013009999413043,0.0020967000164091587,3795.0,0.2609578149950702,8.0,"{'C': 100.0, 'class_weight': 'balanced'}"
+random_forest,classifier,20,1,dev,ok,3.925195000017993,0.05968599999323487,3795.0,0.23062362057577368,8.0,"{'max_depth': 4, 'min_samples_leaf': 20, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,20,1,dev,ok,5.632588299922645,0.04424369998741895,3795.0,0.25119881893629054,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': None}"
+momentum_rule,rule,20,1,dev,ok,0.016538300085812807,0.0002337999176234007,3795.0,0.40570525762025217,8.0,"{'lookback': 250, 'band': 0.5}"
+ma_cross_rule,rule,20,1,dev,ok,0.011804900015704334,0.00036750000435858965,3795.0,0.339968754925555,6.0,"{'fast': 50, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,20,1,dev,ok,0.002974800067022443,0.0007957000052556396,3795.0,0.3745746778237753,1.0,
+jev_signal_examples,jev,20,1,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,20,1,dev,ok,3.3760331999510527,0.022817100048996508,3795.0,0.3351578462393327,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_head_examples,jev,20,1,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,20,1,dev,ok,7.03167219995521,0.04588700004387647,3795.0,0.25405763869046366,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': None}"
+jev_plus_controlled_examples,jev,20,1,dev,not run: no saved outputs,,,,,,
+majority,baseline,20,2,dev,ok,0.0029773999704048038,0.00011729996185749769,3765.0,0.1864105300604767,1.0,
+stratified_random,baseline,20,2,dev,ok,0.0027761999517679214,0.0002617000136524439,3765.0,0.3352719843341107,1.0,
+logreg,classifier,20,2,dev,ok,0.4002885000081733,0.002080800011754036,3765.0,0.2464841247334867,8.0,"{'C': 0.01, 'class_weight': None}"
+random_forest,classifier,20,2,dev,ok,3.8963342000497505,0.07203249994199723,3765.0,0.3260582725042377,8.0,"{'max_depth': 16, 'min_samples_leaf': 10, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,20,2,dev,ok,5.167843799921684,0.016863099997863173,3765.0,0.3463523097886867,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': 'balanced'}"
+momentum_rule,rule,20,2,dev,ok,0.01875839999411255,0.0003664999967440963,3765.0,0.37176235804720087,8.0,"{'lookback': 250, 'band': 0.5}"
+ma_cross_rule,rule,20,2,dev,ok,0.011796100065112114,0.0003434999380260706,3765.0,0.3106394129979036,6.0,"{'fast': 50, 'slow': 200, 'confirm': False}"
+jev_signal_zero,jev,20,2,dev,ok,0.002986100036650896,0.0007678000256419182,3765.0,0.27859162334728566,1.0,
+jev_signal_examples,jev,20,2,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,20,2,dev,ok,3.7847971000010148,0.053942799917422235,3765.0,0.3127547892485593,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_head_examples,jev,20,2,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,20,2,dev,ok,7.1969578000716865,0.0438467999920249,3765.0,0.3438714207299148,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_plus_controlled_examples,jev,20,2,dev,not run: no saved outputs,,,,,,
+majority,baseline,20,3,dev,ok,0.0033165999921038747,0.00016520009376108646,3765.0,0.19907899397803755,1.0,
+stratified_random,baseline,20,3,dev,ok,0.003079499932937324,0.0002696000738069415,3765.0,0.3421491231454951,1.0,
+logreg,classifier,20,3,dev,ok,0.3904790999367833,0.0020381000358611345,3765.0,0.3649326759814131,8.0,"{'C': 0.01, 'class_weight': None}"
+random_forest,classifier,20,3,dev,ok,3.7359199000056833,0.04877769993618131,3765.0,0.337736395845603,8.0,"{'max_depth': 8, 'min_samples_leaf': 20, 'class_weight': None}"
+gbt,classifier,20,3,dev,ok,5.0140570000512525,0.016508599976077676,3765.0,0.38772254193567707,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': 'balanced'}"
+momentum_rule,rule,20,3,dev,ok,0.016903199953958392,0.0003173999721184373,3765.0,0.37005017077895785,8.0,"{'lookback': 120, 'band': 0.5}"
+ma_cross_rule,rule,20,3,dev,ok,0.01173150003887713,0.00038139999378472567,3765.0,0.34872590394680275,6.0,"{'fast': 50, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,20,3,dev,ok,0.002918599988333881,0.0008085999870672822,3765.0,0.20760944293766567,1.0,
+jev_signal_examples,jev,20,3,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,20,3,dev,ok,3.4579706999938935,0.015176999964751303,3765.0,0.37755507731473986,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': 'balanced'}"
+jev_head_examples,jev,20,3,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,20,3,dev,ok,7.200334899942391,0.04399020003620535,3765.0,0.3813543715920626,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': None}"
+jev_plus_controlled_examples,jev,20,3,dev,not run: no saved outputs,,,,,,
+majority,baseline,20,4,dev,ok,0.003081899951212108,0.00012310000602155924,3765.0,0.186219739292365,1.0,
+stratified_random,baseline,20,4,dev,ok,0.0027646999806165695,0.0002449000021442771,3765.0,0.33052686691543354,1.0,
+logreg,classifier,20,4,dev,ok,0.29204630001913756,0.0022844000486657023,3765.0,0.34059240037786437,8.0,"{'C': 0.001, 'class_weight': 'balanced'}"
+random_forest,classifier,20,4,dev,ok,4.158307300065644,0.049247499904595315,3765.0,0.38229484482334497,8.0,"{'max_depth': 16, 'min_samples_leaf': 10, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,20,4,dev,ok,6.101868199999444,0.04282480000983924,3765.0,0.3507503453618903,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': None}"
+momentum_rule,rule,20,4,dev,ok,0.016363800037652254,0.00023879995569586754,3765.0,0.46840295702174156,8.0,"{'lookback': 60, 'band': 0.5}"
+ma_cross_rule,rule,20,4,dev,ok,0.011871399939991534,0.0003918000729754567,3765.0,0.4063475097742315,6.0,"{'fast': 50, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,20,4,dev,ok,0.0029146000742912292,0.0007851000409573317,3765.0,0.37655677655677655,1.0,
+jev_signal_examples,jev,20,4,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,20,4,dev,ok,3.5130437000188977,0.027475200011394918,3765.0,0.37784413246866216,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_head_examples,jev,20,4,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,20,4,dev,ok,7.149742699926719,0.04481610003858805,3765.0,0.3839764440128297,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_plus_controlled_examples,jev,20,4,dev,not run: no saved outputs,,,,,,
+majority,baseline,20,5,dev,ok,0.003973499988205731,0.0001284999307245016,3795.0,0.1735474006116208,1.0,
+stratified_random,baseline,20,5,dev,ok,0.002626500092446804,0.00023799994960427284,3795.0,0.34947662163659965,1.0,
+logreg,classifier,20,5,dev,ok,0.4324429000262171,0.0019561999943107367,3795.0,0.2687646078275316,8.0,"{'C': 0.001, 'class_weight': None}"
+random_forest,classifier,20,5,dev,ok,3.940431100083515,0.05877629993483424,3795.0,0.3603612379854569,8.0,"{'max_depth': 8, 'min_samples_leaf': 20, 'class_weight': 'balanced_subsample'}"
+gbt,classifier,20,5,dev,ok,5.015504200011492,0.016273200046271086,3795.0,0.39494267652416154,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': None}"
+momentum_rule,rule,20,5,dev,ok,0.016172099974937737,0.00023280002642422915,3795.0,0.3208678893958082,8.0,"{'lookback': 250, 'band': 0.5}"
+ma_cross_rule,rule,20,5,dev,ok,0.011558900005184114,0.00033899990376085043,3795.0,0.27462981045087126,6.0,"{'fast': 50, 'slow': 200, 'confirm': False}"
+jev_signal_zero,jev,20,5,dev,ok,0.003118599997833371,0.0008227999787777662,3795.0,0.2907321792854229,1.0,
+jev_signal_examples,jev,20,5,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,20,5,dev,ok,3.8525390999857336,0.04510910005774349,3795.0,0.3485665820960495,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_head_examples,jev,20,5,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,20,5,dev,ok,6.708466000040062,0.024670899962075055,3795.0,0.4011866329898746,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+jev_plus_controlled_examples,jev,20,5,dev,not run: no saved outputs,,,,,,
+majority,baseline,20,6,dev,ok,0.0032755000283941627,0.0001273999223485589,3780.0,0.15120274914089346,1.0,
+stratified_random,baseline,20,6,dev,ok,0.0027966999914497137,0.00025379995349794626,3780.0,0.29583232469942705,1.0,
+logreg,classifier,20,6,dev,ok,0.4010116000426933,0.00200889992993325,3780.0,0.4118347796818149,8.0,"{'C': 0.01, 'class_weight': None}"
+random_forest,classifier,20,6,dev,ok,3.8739719999721274,0.07127049996051937,3780.0,0.3202010504163844,8.0,"{'max_depth': 12, 'min_samples_leaf': 10, 'class_weight': None}"
+gbt,classifier,20,6,dev,ok,4.997712000040337,0.02211610006634146,3780.0,0.3197437380749401,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': 'balanced'}"
+momentum_rule,rule,20,6,dev,ok,0.016779700061306357,0.0002386999549344182,3780.0,0.48484418487337555,8.0,"{'lookback': 60, 'band': 0.5}"
+ma_cross_rule,rule,20,6,dev,ok,0.012505799997597933,0.0003600000636652112,3780.0,0.4326334668759315,6.0,"{'fast': 50, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,20,6,dev,ok,0.0029768000822514296,0.0008166999323293567,3780.0,0.3595598506467009,1.0,
+jev_signal_examples,jev,20,6,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,20,6,dev,ok,3.8812255999073386,0.06508020008914173,3780.0,0.3676686156152426,8.0,"{'num_leaves': 15, 'learning_rate': 0.03, 'n_estimators': 400, 'class_weight': None}"
+jev_head_examples,jev,20,6,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,20,6,dev,ok,6.590692400000989,0.023314999998547137,3780.0,0.3231384481709259,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': None}"
+jev_plus_controlled_examples,jev,20,6,dev,not run: no saved outputs,,,,,,
+majority,baseline,20,7,dev,ok,0.0030398000963032246,0.00013399997260421515,3780.0,0.20130989314029646,1.0,
+stratified_random,baseline,20,7,dev,ok,0.0028809000505134463,0.0002513999352231622,3780.0,0.3671739755314129,1.0,
+logreg,classifier,20,7,dev,ok,0.41508790000807494,0.0029217000119388103,3780.0,0.36828105162666697,8.0,"{'C': 1.0, 'class_weight': None}"
+random_forest,classifier,20,7,dev,ok,3.921540000010282,0.07114429993089288,3780.0,0.3412008664412511,8.0,"{'max_depth': 12, 'min_samples_leaf': 10, 'class_weight': None}"
+gbt,classifier,20,7,dev,ok,5.846033000038005,0.042587799951434135,3780.0,0.3979444479780679,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': None}"
+momentum_rule,rule,20,7,dev,ok,0.01608710002619773,0.00022990000434219837,3780.0,0.3273200402407287,8.0,"{'lookback': 20, 'band': 0.5}"
+ma_cross_rule,rule,20,7,dev,ok,0.011645899969153106,0.0003532000118866563,3780.0,0.33134606080905066,6.0,"{'fast': 50, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,20,7,dev,ok,0.003238700097426772,0.0008952999487519264,3780.0,0.3279963685722848,1.0,
+jev_signal_examples,jev,20,7,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,20,7,dev,ok,3.60140839999076,0.015698199975304306,3780.0,0.36334130856942704,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': None}"
+jev_head_examples,jev,20,7,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,20,7,dev,ok,7.316573200048879,0.06314439990092069,3780.0,0.3567060100980692,8.0,"{'num_leaves': 15, 'learning_rate': 0.03, 'n_estimators': 400, 'class_weight': None}"
+jev_plus_controlled_examples,jev,20,7,dev,not run: no saved outputs,,,,,,
+majority,baseline,20,8,dev,ok,0.0030119000002741814,0.00012340000830590725,3750.0,0.19405656999641963,1.0,
+stratified_random,baseline,20,8,dev,ok,0.002819799934513867,0.00023450003936886787,3750.0,0.32958087423191906,1.0,
+logreg,classifier,20,8,dev,ok,0.30997910001315176,0.0014733000425621867,3750.0,0.330131811769447,8.0,"{'C': 0.001, 'class_weight': None}"
+random_forest,classifier,20,8,dev,ok,3.8320863000117242,0.04743669996969402,3750.0,0.3773014357970927,8.0,"{'max_depth': 8, 'min_samples_leaf': 20, 'class_weight': None}"
+gbt,classifier,20,8,dev,ok,4.87123450008221,0.01737939997110516,3750.0,0.35566657193921086,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': None}"
+momentum_rule,rule,20,8,dev,ok,0.01663410000037402,0.0002231999533250928,3750.0,0.3350898570577024,8.0,"{'lookback': 250, 'band': 0.5}"
+ma_cross_rule,rule,20,8,dev,ok,0.012022200040519238,0.00034959998447448015,3750.0,0.25251112230751244,6.0,"{'fast': 50, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,20,8,dev,ok,0.00289939995855093,0.0007820000173524022,3750.0,0.23536937921002687,1.0,
+jev_signal_examples,jev,20,8,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,20,8,dev,ok,3.315799899981357,0.01556580001488328,3750.0,0.37402837384730186,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': None}"
+jev_head_examples,jev,20,8,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,20,8,dev,ok,6.334578600013629,0.01671400002669543,3750.0,0.35684260807260565,8.0,"{'num_leaves': 15, 'learning_rate': 0.1, 'n_estimators': 100, 'class_weight': None}"
+jev_plus_controlled_examples,jev,20,8,dev,not run: no saved outputs,,,,,,
+majority,baseline,20,9,dev,ok,0.0029648999916389585,0.00012800004333257675,3450.0,0.18352059925093633,1.0,
+stratified_random,baseline,20,9,dev,ok,0.00275129999499768,0.00024860003031790257,3450.0,0.33493804710918273,1.0,
+logreg,classifier,20,9,dev,ok,0.3287745000561699,0.0014060999965295196,3450.0,0.2855167534889704,8.0,"{'C': 0.01, 'class_weight': None}"
+random_forest,classifier,20,9,dev,ok,3.847541099996306,0.08027439995203167,3450.0,0.25982336416865376,8.0,"{'max_depth': 12, 'min_samples_leaf': 10, 'class_weight': None}"
+gbt,classifier,20,9,dev,ok,6.050509800086729,0.044001400005072355,3450.0,0.252299266344814,8.0,"{'num_leaves': 31, 'learning_rate': 0.05, 'n_estimators': 200, 'class_weight': None}"
+momentum_rule,rule,20,9,dev,ok,0.016809199936687946,0.0002586999908089638,3450.0,0.3760272595459208,8.0,"{'lookback': 250, 'band': 0.5}"
+ma_cross_rule,rule,20,9,dev,ok,0.012203800026327372,0.000381799996830523,3450.0,0.3162505100340438,6.0,"{'fast': 20, 'slow': 200, 'confirm': True}"
+jev_signal_zero,jev,20,9,dev,ok,0.0038022000808268785,0.0008252999978139997,3450.0,0.34314220085428565,1.0,
+jev_signal_examples,jev,20,9,dev,not run: no saved outputs,,,,,,
+jev_head_zero,jev,20,9,dev,ok,3.3728488999186084,0.02065680001396686,3450.0,0.3304636838256901,8.0,"{'num_leaves': 7, 'learning_rate': 0.03, 'n_estimators': 200, 'class_weight': None}"
+jev_head_examples,jev,20,9,dev,not run: no saved outputs,,,,,,
+jev_plus_controlled_zero,jev,20,9,dev,ok,7.345947500085458,0.06380799994803965,3450.0,0.25299447313581586,8.0,"{'num_leaves': 15, 'learning_rate': 0.03, 'n_estimators': 400, 'class_weight': 'balanced'}"
+jev_plus_controlled_examples,jev,20,9,dev,not run: no saved outputs,,,,,,

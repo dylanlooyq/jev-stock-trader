@@ -197,16 +197,35 @@ def test_passive_series_has_the_backtest_shape():
     assert (out["exposure"] == 1.0).all() and out["cost"].sum() == 0.0
 
 
-def test_configured_rules_hold_three_and_one_of_ten_assets():
-    """Decision D11: top 3 is the primary rule and top 1 is a declared check; both hold whole assets."""
+def test_configured_rules_hold_four_and_one_of_fifteen_assets():
+    """Decisions D11 and D13: top 4 of 15 is the primary rule and top 1 is a declared check; both hold whole assets."""
     from jevbench.backtest import names_held, trade_rules
     from jevbench.config import load_config
 
     cfg = load_config()
     assert list(trade_rules(cfg)) == ["rank", "rank_check", "buy_names"]
-    assert cfg["backtest"]["primary_rule"] == "rank" and len(cfg["data"]["tickers"]) == 10
-    assert names_held(cfg, "rank") == 3 and names_held(cfg, "rank_check") == 1 and names_held(cfg, "buy_names") is None
-    # Before bitcoin has history only nine assets are scored; the counts must not change.
-    nine = pd.DataFrame([np.arange(9.0)], columns=list("ABCDEFGHI"))
-    assert (rank_weights(nine, cfg["backtest"]["rank_fraction"], seed=1).loc[0] > 0).sum() == 3
-    assert (rank_weights(nine, cfg["backtest"]["rank_check_fraction"], seed=1).loc[0] > 0).sum() == 1
+    assert cfg["backtest"]["primary_rule"] == "rank" and len(cfg["data"]["tickers"]) == 15
+    assert "BTC-USD" not in cfg["data"]["tickers"]
+    assert names_held(cfg, "rank") == 4 and names_held(cfg, "rank_check") == 1 and names_held(cfg, "buy_names") is None
+    # The counts must not change if an asset has no score on a date (14 scored assets).
+    scores = pd.DataFrame([np.arange(14.0)], columns=list("ABCDEFGHIJKLMN"))
+    assert (rank_weights(scores, cfg["backtest"]["rank_fraction"], seed=1).loc[0] > 0).sum() == 4
+    assert (rank_weights(scores, cfg["backtest"]["rank_check_fraction"], seed=1).loc[0] > 0).sum() == 1
+
+
+def test_buy_names_slots_are_independent_of_the_other_assets():
+    """Decision D14: every BUY gets the same fixed slot, 1/15 of capital, whatever else is BUY."""
+    from jevbench.backtest import tranche_weights
+    from jevbench.config import load_config
+
+    cfg = load_config()
+    slot = float(cfg["backtest"]["max_weight"])
+    assert slot == pytest.approx(1 / len(cfg["data"]["tickers"]), rel=1e-4)
+    cols = list("ABCDEFGHIJKLMNO")
+    one = pd.DataFrame([[BUY] + [HOLD] * 14], columns=cols)
+    many = pd.DataFrame([[BUY] * 9 + [HOLD] * 6], columns=cols)
+    everyone = pd.DataFrame([[BUY] * 15], columns=cols)
+    w_one, w_many, w_all = (tranche_weights(x, "long_only", slot) for x in (one, many, everyone))
+    assert w_one.loc[0, "A"] == pytest.approx(slot) and w_many.loc[0, "A"] == pytest.approx(slot)
+    assert w_all.loc[0, "A"] == pytest.approx(slot)
+    assert w_one.loc[0].sum() == pytest.approx(slot) and w_all.loc[0].sum() == pytest.approx(1.0, abs=1e-4)

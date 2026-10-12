@@ -6,21 +6,23 @@ seed: 20261011
 
 data:
   source: yfinance
-  universe_name: multi_asset_10_v1
+  universe_name: mixed_15_v2
   start: "2010-01-01"
   end: "2026-09-30"          # last date requested, inclusive
   market_ticker: SPY
   risk_free_ticker: "^IRX"     # 13-week Treasury bill yield, percent per year
   cache_dir: data
-  # Ten assets across asset classes, chosen by hand in 2026 (decision D10). Each is the
-  # most liquid long-lived US-listed fund for its exposure, except bitcoin, which is the
-  # spot series and starts in 2014-09. Chosen with hindsight: a documented limitation.
+  # Fifteen assets (decision D13, 2026-10-12): nine funds across asset classes plus six
+  # large US stocks. Bitcoin was removed. The funds were chosen by hand in 2026 (D10), each
+  # the most liquid long-lived US-listed fund for its exposure, so that part of the list
+  # carries hindsight. The six stocks are the largest US companies by market capitalisation
+  # in 2009 that are not in the smoke-test set (config/smoke.yaml), chosen with no knowledge
+  # of later returns; they are all still listed, which is a mild survivorship filter.
   # The S&P 500 is traded through IVV because SPY is the market proxy and is never held.
   # config/sp500.yaml and config/large_cap_100.yaml restore the earlier stock universes.
   tickers: [
     IVV,        # S&P 500
     GLD,        # gold
-    BTC-USD,    # bitcoin (trades every day; only the market's trading days are kept)
     TLT,        # US Treasury bonds, 20+ years
     EFA,        # developed-market stocks outside North America
     EEM,        # emerging-market stocks
@@ -28,6 +30,12 @@ data:
     VNQ,        # US real estate investment trusts
     UUP,        # US dollar against a basket of currencies
     HYG,        # US high-yield corporate bonds
+    GOOGL,      # Alphabet            (stock, 2009 market-cap rank 4 outside the smoke set)
+    PG,         # Procter & Gamble    (stock, rank 7)
+    IBM,        # IBM                 (stock, rank 9)
+    CVX,        # Chevron             (stock, rank 10)
+    WFC,        # Wells Fargo         (stock, rank 11)
+    CSCO,       # Cisco               (stock, rank 13)
   ]
 
 dataset:
@@ -137,11 +145,11 @@ jev:
 
 backtest:
   primary_rule: rank           # rank (top fraction by score, fully invested) | buy_names
-  rank_fraction: 0.3           # rank rule: share of assets held (3 of 10; D11)
-  rank_check_fraction: 0.1     # declared check, reported as rule `rank_check` (1 of 10; D11)
+  rank_fraction: 0.27          # rank rule: share of assets held (4 of 15; 3 of 10 under D11, D13)
+  rank_check_fraction: 0.07    # declared check, reported as rule `rank_check` (1 of 15; D11, D13)
   mode: long_only              # long_only | long_short
   risk_free: tbill             # tbill (idle cash earns the T-bill rate) | zero
-  max_weight: 0.10             # buy_names rule: cap per name within one daily tranche
+  max_weight: 0.0666667        # buy_names rule: fixed slot per name, 1/15, so a name's weight never depends on the others (D14)
   cost_bps_per_side: 5.0       # commission + half-spread + slippage, all-in
   borrow_bps_per_year: 50.0    # long_short only
   starting_capital: 100000

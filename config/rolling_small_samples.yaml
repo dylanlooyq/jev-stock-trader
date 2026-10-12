@@ -1,0 +1,16 @@
+# Companion to the rolling_*m.yaml overrides. A few hundred training rows cannot support the
+# expanding design's leaf sizes (50 to 200), so the tree grids shrink them. The budget stays
+# at 8 configurations per fold, the same as every other tuned model.
+models:
+  random_forest:
+    grid:
+      - {max_depth: 4, min_samples_leaf: 20, class_weight: null}
+      - {max_depth: 8, min_samples_leaf: 20, class_weight: null}
+      - {max_depth: 12, min_samples_leaf: 10, class_weight: null}
+      - {max_depth: 16, min_samples_leaf: 10, class_weight: null}
+      - {max_depth: 4, min_samples_leaf: 20, class_weight: balanced_subsample}
+      - {max_depth: 8, min_samples_leaf: 20, class_weight: balanced_subsample}
+      - {max_depth: 12, min_samples_leaf: 10, class_weight: balanced_subsample}
+      - {max_depth: 16, min_samples_leaf: 10, class_weight: balanced_subsample}
+  gbt:
+    min_child_samples: 20

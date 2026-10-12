@@ -164,3 +164,44 @@ def test_walk_forward_scores_all_models_on_identical_rows(cfg, prices):
     not_run = run["fit_log"][run["fit_log"]["status"] != "ok"]
     assert set(not_run["family"]) == {"jev"}
     assert not preds["model"].str.startswith("jev").any()
+
+
+ROLLING = {"splits": {"train_window_months": 6, "validation_months": 2, "test_months": 6, "min_train_days": 20}}
+
+
+def test_rolling_window_bounds_the_training_rows_and_keeps_the_purge(cfg, ds):
+    rolling = deep_update(cfg, ROLLING)
+    dates = pd.DatetimeIndex(sorted(ds["date"].unique()))
+    folds = make_folds(ds["date"], rolling, 5)
+    expanding = make_folds(ds["date"], cfg, 5)
+    assert len(folds) >= 2 and all(f.train_start is not None for f in folds)
+    assert all(f.train_start is None for f in expanding)
+    gap = 5 + 1 + embargo_days(rolling, 5)
+    for fold in folds:
+        f = fold_frames(ds, fold, 5)
+        assert f["train"]["date"].min() >= fold.train_start
+        assert f["trainval"]["date"].min() >= fold.train_start
+        # the window is about six months of trading days, not everything before the fold
+        assert dates.get_loc(f["train"]["date"].max()) - dates.get_loc(f["train"]["date"].min()) < 135
+        assert f["train"]["date"].max() < f["val"]["date"].min() < f["test"]["date"].min()
+        assert f["trainval"][f"label_end_5"].max() < fold.test_start
+        last_fit = dates.get_loc(f["trainval"]["date"].max())
+        assert dates.get_loc(f["test"]["date"].min()) - last_fit > gap - 1
+        assert set(f["trainval"]["date"]).isdisjoint(f["test"]["date"])
+    # same test blocks as the expanding design, so the two are comparable
+    assert [f.test_start for f in folds] == [f.test_start for f in expanding][: len(folds)]
+
+
+def test_rolling_window_drops_old_history_that_expanding_keeps(cfg, ds):
+    rolling = deep_update(cfg, ROLLING)
+    last_rolling = fold_frames(ds, make_folds(ds["date"], rolling, 5)[-1], 5)
+    last_expanding = fold_frames(ds, make_folds(ds["date"], cfg, 5)[-1], 5)
+    assert last_rolling["train"]["date"].min() > last_expanding["train"]["date"].min()
+    assert len(last_rolling["train"]) < len(last_expanding["train"])
+
+
+def test_rolling_folds_with_too_short_a_validation_window_are_skipped(cfg, ds):
+    rolling = deep_update(cfg, ROLLING)
+    assert make_folds(ds["date"], rolling, 5)
+    strict = deep_update(rolling, {"splits": {"min_val_days": 40}})
+    assert make_folds(ds["date"], strict, 5) == []

@@ -1,0 +1,12 @@
+# Exploratory sensitivity variant (decision D12): rolling 12-month training window.
+# Train on the 12 months before the validation window, tune on the next 4 month(s),
+# refit on train + validation, trade the next 12 months, then repeat. Apply together with
+# config/rolling_small_samples.yaml:  --overrides config/rolling_12m.yaml config/rolling_small_samples.yaml
+# Horizons whose purge gap leaves fewer than min_val_days of validation are skipped, not forced.
+splits:
+  train_window_months: 12
+  validation_months: 4
+  test_months: 12
+  first_test_start: "2014-10-01"   # so that holdout_start (2024-10-01) is a fold boundary
+  min_train_days: 15
+  min_val_days: 8
